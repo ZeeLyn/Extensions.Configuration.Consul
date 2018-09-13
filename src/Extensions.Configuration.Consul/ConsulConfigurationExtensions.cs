@@ -8,18 +8,12 @@ namespace Extensions.Configuration.Consul
 {
 	public static class ConsulConfigurationExtensions
 	{
-		private static List<ConsulAgentConfiguration> Configs { get; }
 
-		static ConsulConfigurationExtensions()
-		{
-			Configs = new List<ConsulAgentConfiguration>();
-		}
 		public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, ConsulClientConfiguration consulClientConfiguration, ConsulQueryOptions queryOptions, bool reloadOnChange = false)
 		{
 			if (consulClientConfiguration == null)
 				throw new ArgumentNullException(nameof(consulClientConfiguration), "The agent url can't be null.");
-			Configs.Add(new ConsulAgentConfiguration { ClientConfiguration = consulClientConfiguration, QueryOptions = queryOptions });
-			return Add(configurationBuilder, reloadOnChange);
+			return Add(configurationBuilder, new List<ConsulAgentConfiguration> { new ConsulAgentConfiguration { ClientConfiguration = consulClientConfiguration, QueryOptions = queryOptions } }, reloadOnChange);
 		}
 
 
@@ -27,7 +21,7 @@ namespace Extensions.Configuration.Consul
 		{
 			if (string.IsNullOrWhiteSpace(agentUrl))
 				throw new ArgumentNullException(nameof(agentUrl), "The agent url can't be null.");
-			Configs.Add(new ConsulAgentConfiguration
+			return Add(configurationBuilder, new List<ConsulAgentConfiguration>{new ConsulAgentConfiguration
 			{
 				ClientConfiguration = new ConsulClientConfiguration
 				{
@@ -39,8 +33,7 @@ namespace Extensions.Configuration.Consul
 				{
 					Prefix = prefix
 				}
-			});
-			return Add(configurationBuilder, reloadOnChange);
+			}}, reloadOnChange);
 		}
 
 		public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, IEnumerable<ConsulAgentConfiguration> configurations, bool reloadOnChange = false)
@@ -48,13 +41,12 @@ namespace Extensions.Configuration.Consul
 			var consulAgentConfigurations = configurations.ToList();
 			if (configurations == null || !consulAgentConfigurations.Any())
 				throw new ArgumentNullException(nameof(configurations), "The agent can't be null.");
-			Configs.AddRange(consulAgentConfigurations);
-			return Add(configurationBuilder, reloadOnChange);
+			return Add(configurationBuilder, consulAgentConfigurations, reloadOnChange);
 		}
 
-		private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, bool reloadOnChange)
+		private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, IEnumerable<ConsulAgentConfiguration> configurations, bool reloadOnChange)
 		{
-			return configurationBuilder.Add(new ConsulConfigurationSource(Configs, reloadOnChange));
+			return configurationBuilder.Add(new ConsulConfigurationSource(configurations, reloadOnChange));
 		}
 	}
 }

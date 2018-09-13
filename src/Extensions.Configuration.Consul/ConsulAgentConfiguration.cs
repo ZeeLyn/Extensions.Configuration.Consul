@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Consul;
+﻿using Consul;
 
 namespace Extensions.Configuration.Consul
 {
@@ -10,5 +7,7 @@ namespace Extensions.Configuration.Consul
 		public ConsulClientConfiguration ClientConfiguration { get; set; }
 
 		public ConsulQueryOptions QueryOptions { get; set; }
+
+		internal ulong LastIndex { get; set; }
 	}
 }
