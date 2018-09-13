@@ -5,11 +5,11 @@ namespace Extensions.Configuration.Consul
 {
 	public class ConsulConfigurationSource : IConfigurationSource
 	{
-		private IEnumerable<ConsulAgentConfiguration> Config { get; }
+		private ConsulAgentConfiguration Config { get; }
 
 		private bool ReloadOnChange { get; }
 
-		public ConsulConfigurationSource(IEnumerable<ConsulAgentConfiguration> config, bool reloadOnChange)
+		public ConsulConfigurationSource(ConsulAgentConfiguration config, bool reloadOnChange)
 		{
 			Config = config;
 			ReloadOnChange = reloadOnChange;
@@ -19,7 +19,5 @@ namespace Extensions.Configuration.Consul
 		{
 			return new ConsulConfigurationProvider(Config, ReloadOnChange);
 		}
-
-
 	}
 }

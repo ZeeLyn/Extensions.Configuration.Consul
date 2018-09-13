@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -12,11 +11,11 @@ namespace Extensions.Configuration.Consul
 {
 	public class ConsulConfigurationProvider : ConfigurationProvider
 	{
-		private IEnumerable<ConsulAgentConfiguration> Config { get; }
+		private ConsulAgentConfiguration Config { get; }
 
 		private bool ReloadOnChange { get; }
 
-		public ConsulConfigurationProvider(IEnumerable<ConsulAgentConfiguration> config, bool reloadOnChange)
+		public ConsulConfigurationProvider(ConsulAgentConfiguration config, bool reloadOnChange)
 		{
 			Config = config;
 			ReloadOnChange = reloadOnChange;
@@ -24,65 +23,62 @@ namespace Extensions.Configuration.Consul
 
 		public override void Load()
 		{
-			foreach (var conf in Config)
-			{
-				QueryConsulAsync(conf).ConfigureAwait(false).GetAwaiter().GetResult();
-			}
+			QueryConsulAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 			if (ReloadOnChange) Task.Run(() => { ListenConsulKvChange(); });
 		}
 
 		private void ListenConsulKvChange()
 		{
-			Task.WaitAll(Config.Select(conf => Task.Run(async () =>
+			var failCount = 0;
+			do
 			{
-				var failCount = 0;
-				do
+				try
 				{
-					try
-					{
-						await QueryConsulAsync(conf, true);
-						Console.WriteLine("Query comp;");
-					}
-					catch (TaskCanceledException)
-					{
-						failCount++;
-					}
-					catch (HttpRequestException)
-					{
-						failCount++;
-					}
-				} while (failCount <= conf.QueryOptions.CheckFailMaxTimes);
-			})).ToArray());
+					QueryConsulAsync(true).ConfigureAwait(false).GetAwaiter().GetResult();
+					Console.WriteLine("Query comp;");
+				}
+				catch (TaskCanceledException)
+				{
+					failCount++;
+				}
+				catch (HttpRequestException)
+				{
+					failCount++;
+				}
+			} while (failCount <= Config.QueryOptions.CheckFailMaxTimes);
 		}
 
-		private async Task QueryConsulAsync(ConsulAgentConfiguration conf, bool wait = false)
+		private async Task QueryConsulAsync(bool wait = false)
 		{
 			using (var client = new ConsulClient(options =>
 			{
-				options.WaitTime = conf.ClientConfiguration.WaitTime;
-				options.Token = conf.ClientConfiguration.Token;
-				options.Datacenter = conf.ClientConfiguration.Datacenter;
-				options.Address = conf.ClientConfiguration.Address;
+				options.WaitTime = Config.ClientConfiguration.WaitTime;
+				options.Token = Config.ClientConfiguration.Token;
+				options.Datacenter = Config.ClientConfiguration.Datacenter;
+				options.Address = Config.ClientConfiguration.Address;
 			}))
 			{
-				var result = await client.KV.List(conf.QueryOptions.Prefix, new QueryOptions
+				var result = await client.KV.List(Config.QueryOptions.Prefix, new QueryOptions
 				{
-					Token = conf.ClientConfiguration.Token,
-					Datacenter = conf.ClientConfiguration.Datacenter,
-					WaitIndex = conf.LastIndex,
-					WaitTime = wait ? conf.QueryOptions.CheckChangeWaitTime : null
+					Token = Config.ClientConfiguration.Token,
+					Datacenter = Config.ClientConfiguration.Datacenter,
+					WaitIndex = Config.LastIndex,
+					WaitTime = wait ? Config.QueryOptions.CheckChangeWaitTime : null
 				});
-				if (result.StatusCode == HttpStatusCode.OK && result.LastIndex > conf.LastIndex)
+				if (result.StatusCode == HttpStatusCode.NotFound)
+					throw new KeyNotFoundException($"Cannot found key \"{ Config.QueryOptions.Prefix }\".");
+				if (result.StatusCode == HttpStatusCode.OK && result.LastIndex > Config.LastIndex)
 				{
+					Data.Clear();
 					foreach (var item in result.Response)
 					{
-						if (conf.QueryOptions.TrimPrefix)
+						if (Config.QueryOptions.TrimPrefix)
 						{
-							item.Key = item.Key.Substring(conf.QueryOptions.Prefix.Length, item.Key.Length - conf.QueryOptions.Prefix.Length);
+							item.Key = item.Key.Substring(Config.QueryOptions.Prefix.Length, item.Key.Length - Config.QueryOptions.Prefix.Length);
 						}
 						Set(item.Key, item.Value != null || item.Value?.Length > 0 ? Encoding.UTF8.GetString(item.Value) : "");
 					}
-					conf.LastIndex = result.LastIndex;
+					Config.LastIndex = result.LastIndex;
 					if (ReloadOnChange && wait)
 						OnReload();
 				}

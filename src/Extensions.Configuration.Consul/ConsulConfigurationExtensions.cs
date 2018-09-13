@@ -13,7 +13,7 @@ namespace Extensions.Configuration.Consul
 		{
 			if (consulClientConfiguration == null)
 				throw new ArgumentNullException(nameof(consulClientConfiguration), "The agent url can't be null.");
-			return Add(configurationBuilder, new List<ConsulAgentConfiguration> { new ConsulAgentConfiguration { ClientConfiguration = consulClientConfiguration, QueryOptions = queryOptions } }, reloadOnChange);
+			return Add(configurationBuilder, new ConsulAgentConfiguration { ClientConfiguration = consulClientConfiguration, QueryOptions = queryOptions }, reloadOnChange);
 		}
 
 
@@ -21,7 +21,7 @@ namespace Extensions.Configuration.Consul
 		{
 			if (string.IsNullOrWhiteSpace(agentUrl))
 				throw new ArgumentNullException(nameof(agentUrl), "The agent url can't be null.");
-			return Add(configurationBuilder, new List<ConsulAgentConfiguration>{new ConsulAgentConfiguration
+			return Add(configurationBuilder, new ConsulAgentConfiguration
 			{
 				ClientConfiguration = new ConsulClientConfiguration
 				{
@@ -33,20 +33,12 @@ namespace Extensions.Configuration.Consul
 				{
 					Prefix = prefix
 				}
-			}}, reloadOnChange);
+			}, reloadOnChange);
 		}
 
-		public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, IEnumerable<ConsulAgentConfiguration> configurations, bool reloadOnChange = false)
+		private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, ConsulAgentConfiguration configuration, bool reloadOnChange)
 		{
-			var consulAgentConfigurations = configurations.ToList();
-			if (configurations == null || !consulAgentConfigurations.Any())
-				throw new ArgumentNullException(nameof(configurations), "The agent can't be null.");
-			return Add(configurationBuilder, consulAgentConfigurations, reloadOnChange);
-		}
-
-		private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, IEnumerable<ConsulAgentConfiguration> configurations, bool reloadOnChange)
-		{
-			return configurationBuilder.Add(new ConsulConfigurationSource(configurations, reloadOnChange));
+			return configurationBuilder.Add(new ConsulConfigurationSource(configuration, reloadOnChange));
 		}
 	}
 }
