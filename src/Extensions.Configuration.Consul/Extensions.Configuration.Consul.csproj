@@ -7,6 +7,9 @@
     <PackageIconUrl>https://github.com/ww198643/Dapper.Extensions/raw/master/icon.jpg</PackageIconUrl>
     <Authors>Kakous</Authors>
     <Company>Kakous</Company>
+    <PackageReleaseNotes>Extensions.Configuration.Consul</PackageReleaseNotes>
+    <PackageTags>configuration,config,consul</PackageTags>
+    <Description>Extensions.Configuration.Consul</Description>
   </PropertyGroup>
 
   <ItemGroup>
