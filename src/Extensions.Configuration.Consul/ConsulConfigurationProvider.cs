@@ -11,75 +11,95 @@ namespace Extensions.Configuration.Consul
 {
 	public class ConsulConfigurationProvider : ConfigurationProvider
 	{
-		private ConsulAgentConfiguration Config { get; }
+		private ConsulAgentConfiguration Configuration { get; }
 
 		private bool ReloadOnChange { get; }
 
-		public ConsulConfigurationProvider(ConsulAgentConfiguration config, bool reloadOnChange)
+		private ulong LastIndex { get; set; }
+
+		public ConsulConfigurationProvider(ConsulAgentConfiguration configuration, bool reloadOnChange)
 		{
-			Config = config;
+			Configuration = configuration;
 			ReloadOnChange = reloadOnChange;
 		}
 
 		public override void Load()
 		{
 			QueryConsulAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-			if (ReloadOnChange) Task.Run(() => { ListenConsulKvChange(); });
-		}
-
-		private void ListenConsulKvChange()
-		{
-			var failCount = 0;
-			do
+			if (ReloadOnChange)
 			{
-				try
+				Task.Run(async () =>
 				{
-					QueryConsulAsync(true).ConfigureAwait(false).GetAwaiter().GetResult();
-					Console.WriteLine("Query comp;");
-				}
-				catch (TaskCanceledException)
-				{
-					failCount++;
-				}
-				catch (HttpRequestException)
-				{
-					failCount++;
-				}
-			} while (failCount <= Config.QueryOptions.CheckFailMaxTimes);
+					var failCount = 0;
+					do
+					{
+						try
+						{
+							await QueryConsulAsync(true);
+							failCount = 0;
+						}
+						catch (TaskCanceledException)
+						{
+							failCount++;
+							if (Configuration.QueryOptions.FailRetryInterval != null)
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+						}
+						catch (ConsulRequestException)
+						{
+							failCount++;
+							if (Configuration.QueryOptions.FailRetryInterval != null)
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+						}
+						catch (HttpRequestException)
+						{
+							failCount++;
+							if (Configuration.QueryOptions.FailRetryInterval != null)
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+						}
+					} while (failCount <= Configuration.QueryOptions.ContinuousQueryFailures);
+				});
+			}
 		}
 
-		private async Task QueryConsulAsync(bool wait = false)
+
+		private async Task QueryConsulAsync(bool blocking = false)
 		{
 			using (var client = new ConsulClient(options =>
 			{
-				options.WaitTime = Config.ClientConfiguration.WaitTime;
-				options.Token = Config.ClientConfiguration.Token;
-				options.Datacenter = Config.ClientConfiguration.Datacenter;
-				options.Address = Config.ClientConfiguration.Address;
+				options.WaitTime = Configuration.ClientConfiguration.WaitTime;
+				options.Token = Configuration.ClientConfiguration.Token;
+				options.Datacenter = Configuration.ClientConfiguration.Datacenter;
+				options.Address = Configuration.ClientConfiguration.Address;
 			}))
 			{
-				var result = await client.KV.List(Config.QueryOptions.Prefix, new QueryOptions
+				var result = await client.KV.List(Configuration.QueryOptions.Prefix, new QueryOptions
 				{
-					Token = Config.ClientConfiguration.Token,
-					Datacenter = Config.ClientConfiguration.Datacenter,
-					WaitIndex = Config.LastIndex,
-					WaitTime = wait ? Config.QueryOptions.CheckChangeWaitTime : null
+					Token = Configuration.ClientConfiguration.Token,
+					Datacenter = Configuration.ClientConfiguration.Datacenter,
+					WaitIndex = LastIndex,
+					WaitTime = blocking ? Configuration.QueryOptions.BlockingQueryWait : null
 				});
-				if (result.StatusCode == HttpStatusCode.NotFound)
-					throw new KeyNotFoundException($"Cannot found key \"{ Config.QueryOptions.Prefix }\".");
-				if (result.StatusCode == HttpStatusCode.OK && result.LastIndex > Config.LastIndex)
+				if (result.LastIndex > LastIndex)
 				{
 					Data.Clear();
-					foreach (var item in result.Response)
+					if (result.Response != null)
 					{
-						if (Config.QueryOptions.TrimPrefix)
+						foreach (var item in result.Response)
 						{
-							item.Key = item.Key.Substring(Config.QueryOptions.Prefix.Length, item.Key.Length - Config.QueryOptions.Prefix.Length);
+							if (Configuration.QueryOptions.TrimPrefix)
+							{
+								item.Key = item.Key.Substring(Configuration.QueryOptions.Prefix.Length,
+									item.Key.Length - Configuration.QueryOptions.Prefix.Length);
+							}
+
+							Set(item.Key,
+								item.Value != null && item.Value?.Length > 0
+									? Encoding.UTF8.GetString(item.Value)
+									: "");
 						}
-						Set(item.Key, item.Value != null || item.Value?.Length > 0 ? Encoding.UTF8.GetString(item.Value) : "");
 					}
-					Config.LastIndex = result.LastIndex;
-					if (ReloadOnChange && wait)
+					LastIndex = result.LastIndex;
+					if (ReloadOnChange && blocking)
 						OnReload();
 				}
 			}

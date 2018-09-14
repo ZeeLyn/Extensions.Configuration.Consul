@@ -7,7 +7,5 @@ namespace Extensions.Configuration.Consul
 		public ConsulClientConfiguration ClientConfiguration { get; set; }
 
 		public ConsulQueryOptions QueryOptions { get; set; }
-
-		internal ulong LastIndex { get; set; }
 	}
 }

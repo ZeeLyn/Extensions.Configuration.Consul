@@ -10,18 +10,23 @@ namespace Extensions.Configuration.Consul
 		public string Prefix { get; set; }
 
 		/// <summary>
-		/// Remove prefix string of consul key
+		/// Remove prefix string of consul key when binding
 		/// </summary>
-		public bool TrimPrefix { get; set; } = true;
+		public bool TrimPrefix { get; set; } = false;
 
 		/// <summary>
-		/// Wait time of Long polling,the defautl is 2 minutes.
+		/// Wait time of long polling,the defautl is 2 minutes
 		/// </summary>
-		public TimeSpan? CheckChangeWaitTime { get; set; } = TimeSpan.FromMinutes(1);
+		public TimeSpan? BlockingQueryWait { get; set; } = TimeSpan.FromMinutes(2);
 
 		/// <summary>
-		/// The number of failed attempts, the default is 20
+		/// Continuous query failures, the default is 20
 		/// </summary>
-		public int CheckFailMaxTimes { get; set; } = 20;
+		public int ContinuousQueryFailures { get; set; } = 20;
+
+		/// <summary>
+		/// Failure retry interval,the default is 2 minutes
+		/// </summary>
+		public TimeSpan? FailRetryInterval { get; set; } = TimeSpan.FromMinutes(2);
 	}
 }
