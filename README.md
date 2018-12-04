@@ -6,7 +6,7 @@ Package | NuGet
 ---------|------
 Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/Extensions.Configuration.Consul)](https://www.nuget.org/packages/Extensions.Configuration.Consul)
 
-#Usage
+# Usage
 
 ### Register
 
