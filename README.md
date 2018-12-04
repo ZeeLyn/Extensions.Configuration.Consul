@@ -1,6 +1,14 @@
 # Extensions.Configuration.Consul
+Configuration center based on consul.
 
-## 1.Register
+# Package & Status
+Package | NuGet
+---------|------
+Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/Extensions.Configuration.Consul)](https://www.nuget.org/packages/Extensions.Configuration.Consul)
+
+#Usage
+
+### Register
 
 ```csharp
   public class Program
@@ -39,7 +47,7 @@
 		}
 ```
 
-## 2.How to use
+
 ### InstancePerLifetimeScope
 ```csharp
   public class LibClass
