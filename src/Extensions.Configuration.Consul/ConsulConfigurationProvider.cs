@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Consul;
 using System;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 
 namespace Extensions.Configuration.Consul
@@ -45,24 +46,14 @@ namespace Extensions.Configuration.Consul
 							await QueryConsulAsync(CancellationTokenSource.Token, true);
 							failCount = 0;
 						}
-						catch (TaskCanceledException)
+						catch (Exception)
 						{
 							failCount++;
 							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value,
+									CancellationTokenSource.Token);
 						}
-						catch (ConsulRequestException)
-						{
-							failCount++;
-							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
-						}
-						catch (HttpRequestException)
-						{
-							failCount++;
-							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
-						}
+
 					} while (!CancellationTokenSource.IsCancellationRequested && failCount <= Configuration.QueryOptions.ContinuousQueryFailures);
 				}, CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 			}
@@ -88,9 +79,19 @@ namespace Extensions.Configuration.Consul
 				}, cancellationToken);
 				if (result.LastIndex > LastIndex)
 				{
-					Data.Clear();
 					if (result.Response != null)
 					{
+						var deleted = Data.Where(p => result.Response.All(c =>
+							p.Key != (Configuration.QueryOptions.TrimPrefix
+								? c.Key.Substring(Configuration.QueryOptions.Prefix.Length,
+									c.Key.Length - Configuration.QueryOptions.Prefix.Length)
+								: c.Key))).ToList();
+
+						foreach (var del in deleted)
+						{
+							Data.Remove(del.Key);
+						}
+
 						foreach (var item in result.Response)
 						{
 							if (Configuration.QueryOptions.TrimPrefix)
@@ -101,10 +102,16 @@ namespace Extensions.Configuration.Consul
 
 							if (!string.IsNullOrWhiteSpace(item.Key))
 							{
-								Set(item.Key, item.Value != null && item.Value?.Length > 0 ? Encoding.UTF8.GetString(item.Value) : "");
+								Set(item.Key,
+									item.Value != null && item.Value?.Length > 0
+										? Encoding.UTF8.GetString(item.Value)
+										: "");
 							}
 						}
 					}
+					else
+						Data.Clear();
+
 					LastIndex = result.LastIndex;
 					if (ReloadOnChange && blocking)
 						OnReload();

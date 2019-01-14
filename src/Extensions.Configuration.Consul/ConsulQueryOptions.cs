@@ -20,9 +20,9 @@ namespace Extensions.Configuration.Consul
 		public TimeSpan? BlockingQueryWait { get; set; } = TimeSpan.FromMinutes(2);
 
 		/// <summary>
-		/// Continuous query failures, the default is 20
+		/// Continuous query failures, the default is ignore exception.
 		/// </summary>
-		public int ContinuousQueryFailures { get; set; } = 20;
+		public int ContinuousQueryFailures { get; set; } = int.MaxValue;
 
 		/// <summary>
 		/// Failure retry interval,the default is 2 minutes
