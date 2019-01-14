@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Consul;
 using Microsoft.AspNetCore.Mvc;
@@ -27,13 +28,12 @@ namespace Example.Controllers
 
 		// GET api/values
 		[HttpGet]
-		public IActionResult Get()
+		public async Task<IActionResult> Get()
 		{
-
-
 
 			return Ok(new { option = Config, configuration = _conf.GetSection("Db").Get<Configs>(), lib = lib.Get(), single = single.Get() });
 		}
+
 
 	}
 }

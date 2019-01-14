@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Consul;
+using System;
 using Microsoft.Extensions.Configuration;
 
 namespace Extensions.Configuration.Consul
 {
-	public class ConsulConfigurationProvider : ConfigurationProvider
+	internal class ConsulConfigurationProvider : ConfigurationProvider, IDisposable
 	{
 		private ConsulAgentConfiguration Configuration { get; }
 
@@ -17,52 +16,60 @@ namespace Extensions.Configuration.Consul
 
 		private ulong LastIndex { get; set; }
 
+		private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+
 		public ConsulConfigurationProvider(ConsulAgentConfiguration configuration, bool reloadOnChange)
 		{
 			Configuration = configuration;
 			ReloadOnChange = reloadOnChange;
 		}
 
+
+		public static void Shutdown()
+		{
+			CancellationTokenSource.Cancel();
+		}
+
 		public override void Load()
 		{
-			QueryConsulAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+			QueryConsulAsync(CancellationTokenSource.Token).GetAwaiter().GetResult();
 			if (ReloadOnChange)
 			{
-				Task.Run(async () =>
+				Task.Factory.StartNew(async () =>
 				{
 					var failCount = 0;
 					do
 					{
 						try
 						{
-							await QueryConsulAsync(true);
+							await QueryConsulAsync(CancellationTokenSource.Token, true);
 							failCount = 0;
 						}
 						catch (TaskCanceledException)
 						{
 							failCount++;
 							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
 						}
 						catch (ConsulRequestException)
 						{
 							failCount++;
 							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
 						}
 						catch (HttpRequestException)
 						{
 							failCount++;
 							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value);
+								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value, CancellationTokenSource.Token);
 						}
-					} while (failCount <= Configuration.QueryOptions.ContinuousQueryFailures);
-				});
+					} while (!CancellationTokenSource.IsCancellationRequested && failCount <= Configuration.QueryOptions.ContinuousQueryFailures);
+				}, CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 			}
 		}
 
 
-		private async Task QueryConsulAsync(bool blocking = false)
+		private async Task QueryConsulAsync(CancellationToken cancellationToken, bool blocking = false)
 		{
 			using (var client = new ConsulClient(options =>
 			{
@@ -78,7 +85,7 @@ namespace Extensions.Configuration.Consul
 					Datacenter = Configuration.ClientConfiguration.Datacenter,
 					WaitIndex = LastIndex,
 					WaitTime = blocking ? Configuration.QueryOptions.BlockingQueryWait : null
-				});
+				}, cancellationToken);
 				if (result.LastIndex > LastIndex)
 				{
 					Data.Clear();
@@ -92,10 +99,10 @@ namespace Extensions.Configuration.Consul
 									item.Key.Length - Configuration.QueryOptions.Prefix.Length);
 							}
 
-							Set(item.Key,
-								item.Value != null && item.Value?.Length > 0
-									? Encoding.UTF8.GetString(item.Value)
-									: "");
+							if (!string.IsNullOrWhiteSpace(item.Key))
+							{
+								Set(item.Key, item.Value != null && item.Value?.Length > 0 ? Encoding.UTF8.GetString(item.Value) : "");
+							}
 						}
 					}
 					LastIndex = result.LastIndex;
@@ -103,6 +110,11 @@ namespace Extensions.Configuration.Consul
 						OnReload();
 				}
 			}
+		}
+
+		public void Dispose()
+		{
+			CancellationTokenSource.Cancel();
 		}
 	}
 }

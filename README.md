@@ -16,6 +16,7 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
 		public static void Main(string[] args)
 		{
 			CreateWebHostBuilder(args).Build().Run();
+			ConsulConfigurationExtensions.Shutdown();
 		}
 
 
@@ -25,7 +26,7 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
 				config.SetBasePath(Directory.GetCurrentDirectory());
 				config.AddJsonFile("appsettings.json", false, true);
 				config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", false, true);
-				config.AddConsul("http://192.168.1.142:8500", "", "Db/", "dc1", true);
+				config.AddConsul("http://192.168.1.142:8500", "", "AppSetting/", "dc1", true);
 			}).UseStartup<Startup>();
 	  }
 ```
@@ -35,7 +36,7 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
     public IServiceProvider ConfigureServices(IServiceCollection services)
 		{
 			services.AddOptions();
-			services.Configure<Configs>(Configuration.GetSection("Db"));
+			services.Configure<Configs>(Configuration.GetSection("TestConfig"));
 			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
 			var builder = new ContainerBuilder();

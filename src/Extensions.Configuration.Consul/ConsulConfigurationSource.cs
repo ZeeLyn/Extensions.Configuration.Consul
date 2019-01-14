@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace Extensions.Configuration.Consul
 {
-	public class ConsulConfigurationSource : IConfigurationSource
+	internal class ConsulConfigurationSource : IConfigurationSource
 	{
 		private ConsulAgentConfiguration Config { get; }
 

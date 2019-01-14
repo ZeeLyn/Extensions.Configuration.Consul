@@ -4,8 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Consul;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +32,7 @@ namespace Example
 		public IServiceProvider ConfigureServices(IServiceCollection services)
 		{
 			services.AddOptions();
-			services.Configure<Configs>(Configuration.GetSection("Db"));
+			services.Configure<Configs>(Configuration.GetSection("TestConfig"));
 			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
 			var builder = new ContainerBuilder();
