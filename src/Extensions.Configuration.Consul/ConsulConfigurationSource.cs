@@ -2,21 +2,20 @@
 
 namespace Extensions.Configuration.Consul
 {
-	internal class ConsulConfigurationSource : IConfigurationSource
-	{
-		private ConsulAgentConfiguration Config { get; }
+    internal class ConsulConfigurationSource : IConfigurationSource
+    {
+        private ConsulAgentConfiguration Config { get; }
 
-		private bool ReloadOnChange { get; }
+        public ConsulConfigurationSource(ConsulAgentConfiguration config)
+        {
+            Config = config;
+        }
 
-		public ConsulConfigurationSource(ConsulAgentConfiguration config, bool reloadOnChange)
-		{
-			Config = config;
-			ReloadOnChange = reloadOnChange;
-		}
-
-		public IConfigurationProvider Build(IConfigurationBuilder builder)
-		{
-			return new ConsulConfigurationProvider(Config, ReloadOnChange);
-		}
-	}
+        public IConfigurationProvider Build(IConfigurationBuilder builder)
+        {
+            var provider = new ConsulConfigurationProvider(Config);
+            ObserverManager.Attach(provider, Config);
+            return provider;
+        }
+    }
 }

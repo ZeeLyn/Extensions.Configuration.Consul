@@ -1,127 +1,106 @@
-﻿using System.Net.Http;
-using System.Text;
-using System.Threading;
+﻿using System.Text;
 using System.Threading.Tasks;
 using Consul;
-using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Extensions.Configuration.Consul
 {
-	internal class ConsulConfigurationProvider : ConfigurationProvider, IDisposable
-	{
-		private ConsulAgentConfiguration Configuration { get; }
-
-		private bool ReloadOnChange { get; }
-
-		private ulong LastIndex { get; set; }
-
-		private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
-
-		public ConsulConfigurationProvider(ConsulAgentConfiguration configuration, bool reloadOnChange)
-		{
-			Configuration = configuration;
-			ReloadOnChange = reloadOnChange;
-		}
+    internal class ConsulConfigurationProvider : ConfigurationProvider, IObserver
+    {
+        private ConsulAgentConfiguration Configuration { get; }
 
 
-		public static void Shutdown()
-		{
-			CancellationTokenSource.Cancel();
-		}
-
-		public override void Load()
-		{
-			QueryConsulAsync(CancellationTokenSource.Token).GetAwaiter().GetResult();
-			if (ReloadOnChange)
-			{
-				Task.Factory.StartNew(async () =>
-				{
-					var failCount = 0;
-					do
-					{
-						try
-						{
-							await QueryConsulAsync(CancellationTokenSource.Token, true);
-							failCount = 0;
-						}
-						catch (Exception)
-						{
-							failCount++;
-							if (Configuration.QueryOptions.FailRetryInterval != null)
-								await Task.Delay(Configuration.QueryOptions.FailRetryInterval.Value,
-									CancellationTokenSource.Token);
-						}
-
-					} while (!CancellationTokenSource.IsCancellationRequested && failCount <= Configuration.QueryOptions.ContinuousQueryFailures);
-				}, CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-			}
-		}
+        public ConsulConfigurationProvider(ConsulAgentConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
 
 
-		private async Task QueryConsulAsync(CancellationToken cancellationToken, bool blocking = false)
-		{
-			using (var client = new ConsulClient(options =>
-			{
-				options.WaitTime = Configuration.ClientConfiguration.WaitTime;
-				options.Token = Configuration.ClientConfiguration.Token;
-				options.Datacenter = Configuration.ClientConfiguration.Datacenter;
-				options.Address = Configuration.ClientConfiguration.Address;
-			}))
-			{
-				var result = await client.KV.List(Configuration.QueryOptions.Prefix, new QueryOptions
-				{
-					Token = Configuration.ClientConfiguration.Token,
-					Datacenter = Configuration.ClientConfiguration.Datacenter,
-					WaitIndex = LastIndex,
-					WaitTime = blocking ? Configuration.QueryOptions.BlockingQueryWait : null
-				}, cancellationToken);
-				if (result.LastIndex > LastIndex)
-				{
-					if (result.Response != null)
-					{
-						var deleted = Data.Where(p => result.Response.All(c =>
-							p.Key != (Configuration.QueryOptions.TrimPrefix
-								? c.Key.Substring(Configuration.QueryOptions.Prefix.Length,
-									c.Key.Length - Configuration.QueryOptions.Prefix.Length)
-								: c.Key))).ToList();
+        public override void Load()
+        {
+            QueryConsulAsync().GetAwaiter().GetResult();
+        }
 
-						foreach (var del in deleted)
-						{
-							Data.Remove(del.Key);
-						}
 
-						foreach (var item in result.Response)
-						{
-							if (Configuration.QueryOptions.TrimPrefix)
-							{
-								item.Key = item.Key.Substring(Configuration.QueryOptions.Prefix.Length,
-									item.Key.Length - Configuration.QueryOptions.Prefix.Length);
-							}
+        private async Task QueryConsulAsync()
+        {
+            using (var client = new ConsulClient(options =>
+            {
+                options.WaitTime = Configuration.ClientConfiguration.WaitTime;
+                options.Token = Configuration.ClientConfiguration.Token;
+                options.Datacenter = Configuration.ClientConfiguration.Datacenter;
+                options.Address = Configuration.ClientConfiguration.Address;
+            }))
+            {
+                var result = await client.KV.List(Configuration.QueryOptions.Folder, new QueryOptions
+                {
+                    Token = Configuration.ClientConfiguration.Token,
+                    Datacenter = Configuration.ClientConfiguration.Datacenter
+                });
 
-							if (!string.IsNullOrWhiteSpace(item.Key))
-							{
-								Set(item.Key,
-									item.Value != null && item.Value?.Length > 0
-										? Encoding.UTF8.GetString(item.Value)
-										: "");
-							}
-						}
-					}
-					else
-						Data.Clear();
+                if (result.Response == null || !result.Response.Any())
+                    return;
 
-					LastIndex = result.LastIndex;
-					if (ReloadOnChange && blocking)
-						OnReload();
-				}
-			}
-		}
+                foreach (var item in result.Response)
+                {
+                    item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
+                    if (string.IsNullOrWhiteSpace(item.Key))
+                        return;
+                    Set(item.Key, ReadValue(item.Value));
+                }
+            }
+        }
 
-		public void Dispose()
-		{
-			CancellationTokenSource.Cancel();
-		}
-	}
+
+        private string ReadValue(byte[] bytes)
+        {
+            return bytes != null && bytes.Length > 0
+                ? Encoding.UTF8.GetString(bytes)
+                : "";
+        }
+
+        public void OnChange(List<KVPair> kVs, ILogger logger)
+        {
+            if (kVs == null || !kVs.Any())
+            {
+                Data.Clear();
+                OnReload();
+                return;
+            }
+
+            var deleted = Data.Where(p => kVs.All(c =>
+                p.Key != c.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder))).ToList();
+
+            foreach (var del in deleted)
+            {
+                logger.LogTrace($"Remove key [{del.Key}]");
+                Data.Remove(del.Key);
+            }
+
+            foreach (var item in kVs)
+            {
+                item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
+                if (string.IsNullOrWhiteSpace(item.Key))
+                    continue;
+                var newValue = ReadValue(item.Value);
+                if (Data.TryGetValue(item.Key, out var oldValue))
+                {
+                    if (oldValue == newValue)
+                        continue;
+
+                    Set(item.Key, newValue);
+                    logger.LogTrace($"The value of key [{item.Key}] is changed from [{oldValue}] to [{newValue}]");
+                }
+                else
+                {
+                    Set(item.Key, newValue);
+                    logger.LogTrace($"Added key [{item.Key}][{newValue}]");
+                }
+                OnReload();
+            }
+        }
+    }
 }

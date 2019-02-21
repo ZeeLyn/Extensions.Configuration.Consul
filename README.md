@@ -6,9 +6,35 @@ Package | NuGet
 ---------|------
 Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/Extensions.Configuration.Consul)](https://www.nuget.org/packages/Extensions.Configuration.Consul)
 
-# Usage
 
-### Register
+
+# Configuration
+
+## Hardcoded configuration
+```csharp
+  public class Program
+	{
+		public static void Main(string[] args)
+		{
+			CreateWebHostBuilder(args).Build().Run();
+		}
+		public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+			WebHost.CreateDefaultBuilder(args).ConfigureAppConfiguration((context, config) =>
+			{
+				config.AddConsul("http://127.0.0.1:8500");
+			}).UseStartup<Startup>();
+	  }
+```
+
+## Command line configuration
+Command | Describetion
+---------|------
+consul-configuration-addr|Consul agent address
+consul-configuration-token|ACL Token HTTP API
+consul-configuration-dc|Consul data center
+consul-configuration-folder|Prefix of key
+
+
 
 ```csharp
   public class Program
@@ -16,40 +42,32 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
 		public static void Main(string[] args)
 		{
 			CreateWebHostBuilder(args).Build().Run();
-			ConsulConfigurationExtensions.Shutdown();
 		}
-
-
 		public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
 			WebHost.CreateDefaultBuilder(args).ConfigureAppConfiguration((context, config) =>
 			{
-				config.SetBasePath(Directory.GetCurrentDirectory());
-				config.AddJsonFile("appsettings.json", false, true);
-				config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", false, true);
-				config.AddConsul("http://192.168.1.142:8500", "", "AppSetting/", "dc1", true);
+				config.AddConsul(args);
 			}).UseStartup<Startup>();
 	  }
 ```
 
 
+## Reload when modified
 ```csharp
-    public IServiceProvider ConfigureServices(IServiceCollection services)
+    public void ConfigureServices(IServiceCollection services)
 		{
+			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+			services.AddConsulConfigurationCenter();
+
 			services.AddOptions();
 			services.Configure<Configs>(Configuration.GetSection("TestConfig"));
-			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-
-			var builder = new ContainerBuilder();
-			builder.Populate(services);
-			builder.RegisterType<LibClass>().InstancePerLifetimeScope();
-			builder.RegisterType<SingleClass>().SingleInstance();
-			ApplicationContainer = builder.Build();
-			return new AutofacServiceProvider(ApplicationContainer);
+		
 		}
 ```
 
-
-### InstancePerLifetimeScope
+# Usage
+## InstancePerLifetimeScope
 ```csharp
   public class LibClass
 	{
@@ -66,7 +84,7 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
 	}
 ```
 
-### SingleInstance
+## SingleInstance
 ```csharp
   public class SingleClass
 	{
