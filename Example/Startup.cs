@@ -35,7 +35,7 @@ namespace Example
             services.AddOptions();
             services.Configure<Configs>(Configuration.GetSection("TestConfig"));
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-            services.AddConsulConfigurationCenter();
+            services.AddConsulConfigurationCenter(new UIOptions { Port = 9000 });
             var builder = new ContainerBuilder();
             builder.Populate(services);
             builder.RegisterType<LibClass>().InstancePerLifetimeScope();

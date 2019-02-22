@@ -77,6 +77,14 @@ namespace Extensions.Configuration.Consul
             return services;
         }
 
+        public static IServiceCollection AddConsulConfigurationCenter(this IServiceCollection services, UIOptions options, int blockingQueryWaitSeconds = 180)
+        {
+            services.AddConsulConfigurationCenter(blockingQueryWaitSeconds);
+            services.AddSingleton<IHostedService, UIHostedService>();
+            services.AddSingleton(options);
+            return services;
+        }
+
         private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, ConsulAgentConfiguration configuration)
         {
             return configurationBuilder.Add(new ConsulConfigurationSource(configuration));
