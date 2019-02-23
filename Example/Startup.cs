@@ -6,6 +6,7 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Consul;
 using Extensions.Configuration.Consul;
+using Extensions.Configuration.Consul.UI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -35,7 +36,7 @@ namespace Example
             services.AddOptions();
             services.Configure<Configs>(Configuration.GetSection("TestConfig"));
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-            services.AddConsulConfigurationCenter();
+            services.AddConsulConfigurationCenter(new UIOptions { }, 180);
             var builder = new ContainerBuilder();
             builder.Populate(services);
             builder.RegisterType<LibClass>().InstancePerLifetimeScope();
@@ -52,7 +53,12 @@ namespace Example
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvc();
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(
+                    name: "default",
+                    template: "{controller=Home}/{action=Index}/{id?}");
+            });
         }
     }
 }

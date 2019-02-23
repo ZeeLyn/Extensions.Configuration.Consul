@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Extensions.Configuration.Consul\Extensions.Configuration.Consul.csproj" />
+    <ProjectReference Include="..\src\Extensions.Configuration.Consul.UI\Extensions.Configuration.Consul.UI.csproj" />
   </ItemGroup>
 
 </Project>
