@@ -1,0 +1,132 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace Extensions.Configuration.Consul.UI
+{
+    public class FormatKey
+    {
+        public static List<KeyNode> FormatFolder(Dictionary<string, string> keyValuePairs)
+        {
+            var data = keyValuePairs.Where(p => !string.IsNullOrWhiteSpace(p.Key) && p.Key.Contains("/"))
+                .Select(p => p.Key).Select(p => new
+                {
+                    Folder = p.Substring(0, p.LastIndexOf('/')),
+                    FullKey = p,
+                }).ToList();
+            #region Folders
+            var folders = data.GroupBy(p => p.Folder).Select(p => new NodeInfo { Array = p.Key.Split('/').ToList(), FullName = p.Key }).ToList();
+            var items = folders.FindAll(p => p.Array.Count >= 0).Select(p => p.Array[0]).Distinct().ToList();
+            var nodes = new List<KeyNode>();
+            foreach (var item in items)
+            {
+                var node = new KeyNode
+                {
+                    Id = item + "/",
+                    Name = item,
+                    Type = NodeType.Folder
+                };
+                nodes.Add(node);
+                RecurrenceFolder(keyValuePairs, folders, node, 1);
+            }
+            #endregion
+
+            var keys = keyValuePairs.Where(p => !string.IsNullOrWhiteSpace(p.Key) && !p.Key.Contains("/")).Select(p =>
+                new NodeInfo
+                {
+                    Array = p.Key.Split(':').ToList(),
+                    FullName = p.Key
+                }).ToList();
+            var keys0 = keys.FindAll(p => p.Array.Count >= 0).Select(p => p.Array[0]).Distinct().ToList();
+            foreach (var key in keys0)
+            {
+                var node = new KeyNode
+                {
+                    Id = key + ":",
+                    Name = key,
+                    Type = NodeType.PartKey
+                };
+                nodes.Add(node);
+                RecurrenceKeys(keyValuePairs, keys, node, 1);
+            }
+
+            return nodes;
+        }
+
+        public static void RecurrenceFolder(Dictionary<string, string> keyValuePairs, List<NodeInfo> folders, KeyNode keyNode, int level = 0)
+        {
+            var items = folders.FindAll(p => p.Array.Count > level && p.FullName.StartsWith(keyNode.Id)).Select(p => p.Array[level]).Distinct().ToList();
+            if (items.Any())
+                keyNode.Nodes = new List<KeyNode>();
+            else
+            {
+                var keys = keyValuePairs.Where(p => p.Key.StartsWith(keyNode.Id) && p.Key != keyNode.Id).Select(p => new NodeInfo
+                {
+                    FullName = p.Key,
+                    Array = p.Key.Substring(keyNode.Id.Length, p.Key.Length - keyNode.Id.Length).Split(':').ToList()
+                }).ToList();
+                var current = keys.Select(p => p.Array[0]).Distinct().ToList();
+                if (current.Any())
+                {
+                    keyNode.Nodes = new List<KeyNode>();
+                    foreach (var key in current)
+                    {
+                        var node = new KeyNode
+                        {
+                            Id = keyNode.Id + key + ":",
+                            Name = key,
+                            Type = NodeType.PartKey
+                        };
+                        keyNode.Nodes.Add(node);
+                        RecurrenceKeys(keyValuePairs, keys, node, 1);
+                    }
+                }
+            }
+
+            foreach (var item in items)
+            {
+                var prefix = keyNode.Id + item + "/";
+                var node = new KeyNode
+                {
+                    Type = NodeType.Folder,
+                    Id = prefix,
+                    Name = item
+                };
+                keyNode.Nodes.Add(node);
+                RecurrenceFolder(keyValuePairs, folders, node, level + 1);
+            }
+        }
+
+        public static void RecurrenceKeys(Dictionary<string, string> keyValuePairs, List<NodeInfo> keys,
+            KeyNode keyNode, int level = 0)
+        {
+            var items = keys.FindAll(p => p.Array.Count > level && p.FullName.StartsWith(keyNode.Id)).Select(p => p.Array[level]).Distinct().ToList();
+            if (items.Any())
+                keyNode.Nodes = new List<KeyNode>();
+            else
+            {
+                keyNode.Id = keyNode.Id.TrimEnd(':');
+                keyNode.Text = keyValuePairs[keyNode.Id];
+                keyNode.Type = NodeType.FullKey;
+            }
+            foreach (var item in items)
+            {
+                var prefix = keyNode.Id + item + ":";
+                var node = new KeyNode
+                {
+                    Type = NodeType.PartKey,
+                    Id = prefix,
+                    Name = item
+                };
+                keyNode.Nodes.Add(node);
+                RecurrenceKeys(keyValuePairs, keys, node, level + 1);
+            }
+        }
+    }
+
+    public class NodeInfo
+    {
+        public string FullName { get; set; }
+
+        public List<string> Array { get; set; }
+    }
+}

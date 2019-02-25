@@ -10,10 +10,13 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "axios": "^0.18.0",
     "node-sass": "^4.11.0",
     "sass-loader": "^7.1.0",
+    "sweet-modal-vue": "^2.0.0",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
+    "vuedals": "^1.7.0",
     "vuejs-tree": "^2.0.0-0"
   },
   "devDependencies": {

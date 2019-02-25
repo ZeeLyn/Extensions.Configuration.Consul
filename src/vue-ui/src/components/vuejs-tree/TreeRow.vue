@@ -43,13 +43,13 @@
         @click.stop="options.events.editableName.state && toggleEvent('editableName', node)"
       >
         <span style="color:#666; font-size:14px;">{{ node.name }}</span>
-        <template v-if="node.text!=''">: </template>
+        <template v-if="node.type==2">: </template>
         {{node.text}}
       </span>
       <span class="icon-panel">
         <span
           v-if="options.addNode.state == true"
-          @click.stop="options.addNode.fn(node)"
+          @click.stop="options.addNode.fn(parentNode,node)"
           class="icon_parent"
         >
           <i
@@ -58,7 +58,7 @@
           ></i>
         </span>
         <span
-          v-if="options.editNode.state == true"
+          v-if="options.editNode.state == true && node.type==2"
           @click.stop="options.editNode.fn(node)"
           class="icon_parent"
         >
@@ -68,7 +68,7 @@
           ></i>
         </span>
         <span
-          v-if="options.deleteNode.state == true"
+          v-if="options.deleteNode.state == true&&node.type==2"
           @click.stop="options.deleteNode.fn(parentNode,node)"
           class="icon_parent"
         >

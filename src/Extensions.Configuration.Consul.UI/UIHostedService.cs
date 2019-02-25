@@ -54,7 +54,10 @@ namespace Extensions.Configuration.Consul.UI
             }
 
             app.UseDefaultFiles();
-
+            app.UseCors(b =>
+            {
+                b.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().AllowCredentials();
+            });
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new CompositeFileProvider(new EmbeddedFileProvider(typeof(Startup).GetTypeInfo().Assembly)),

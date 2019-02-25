@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Extensions.Configuration.Consul
 {
-    internal static class ObserverManager
+    public static class ObserverManager
     {
         private static IObserver Observer { get; set; }
 

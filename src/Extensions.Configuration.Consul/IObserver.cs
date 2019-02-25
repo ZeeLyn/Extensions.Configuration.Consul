@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Extensions.Configuration.Consul
 {
-    internal interface IObserver
+    public interface IObserver
     {
         void OnChange(List<KVPair> kVPairs, ILogger logger);
     }
