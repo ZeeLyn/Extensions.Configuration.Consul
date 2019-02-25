@@ -5,9 +5,6 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="resources\Index.html" />
-  </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="resources\index.html" />
