@@ -2,11 +2,13 @@
 using System.Text;
 using System.Threading.Tasks;
 using Consul;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Extensions.Configuration.Consul.UI.Controllers
 {
     [Route("key")]
+    [Authorize]
     public class KeyController : Controller
     {
         [HttpGet("nodes")]
