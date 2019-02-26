@@ -33,6 +33,7 @@
         v-if="options.events.checked.state == true"
         @click="toggleEvent('checked', node)"
       >
+      <span class="content">
       <span
         data-toggle="tooltip"
         data-placement="top"
@@ -42,9 +43,9 @@
         :style="selected ? styles.text.active.style : styles.text.style"
         @click.stop="options.events.editableName.state && toggleEvent('editableName', node)"
       >
-        <span style="color:#666; font-size:14px;">{{ node.name }}</span>
-        <template v-if="node.type==2">: </template>
-        {{node.text}}
+          <span class="key">{{ node.name }}</span>
+          <span class="split" v-if="node.type==2">:</span>
+          <span class="text">{{node.text}}</span>
       </span>
       <span class="icon-panel">
         <span
@@ -83,6 +84,7 @@
             class="badge"
           >{{ node.tags[0] }}</span>
         </span>
+      </span>
       </span>
     </div>
     <ul v-if="expanded">
@@ -127,7 +129,7 @@ export default {
           }
         },
         expanded: {
-          class: "expanded_icon",
+          class: "expanded_icon"
         },
         addNode: {
           class: "add_icon",
@@ -367,7 +369,9 @@ export default {
 
 
 <style lang="scss" scoped>
-.tree *{font-size: 14px;}
+.tree * {
+  font-size: 14px;
+}
 .tree-indent {
   margin: 0 10px;
   display: inline-block;
@@ -385,7 +389,8 @@ export default {
   opacity: 1;
 }
 .capitalize {
-  text-transform: capitalize; font-size: 14px;
+  text-transform: capitalize;
+  font-size: 14px;
 }
 .badge {
   font-size: 12px;
@@ -406,5 +411,8 @@ li {
     transform: translateY(-5%) rotate(90deg);
   }
 }
-.icon-panel{display: flex; align-items: center;}
+.icon-panel {
+  display: flex;
+  align-items: center;
+}
 </style>
