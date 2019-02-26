@@ -15,7 +15,7 @@ namespace Extensions.Configuration.Consul.UI
                 }).ToList();
             #region Folders
             var folders = data.GroupBy(p => p.Folder).Select(p => new NodeInfo { Array = p.Key.Split('/').ToList(), FullName = p.Key }).ToList();
-            var items = folders.FindAll(p => p.Array.Count >= 0).Select(p => p.Array[0]).Distinct().ToList();
+            var items = folders.FindAll(p => p.Array.Count > 0).Select(p => p.Array[0]).Distinct().ToList();
             var nodes = new List<KeyNode>();
             foreach (var item in items)
             {
@@ -44,7 +44,7 @@ namespace Extensions.Configuration.Consul.UI
                     Array = p.Key.Split(':').ToList(),
                     FullName = p.Key
                 }).ToList();
-            var keys0 = keys.FindAll(p => p.Array.Count >= 0).Select(p => p.Array[0]).Distinct().ToList();
+            var keys0 = keys.FindAll(p => p.Array.Count > 0).Select(p => p.Array[0]).Distinct().ToList();
             foreach (var key in keys0)
             {
                 var node = new KeyNode
