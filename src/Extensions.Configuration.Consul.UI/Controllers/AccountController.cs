@@ -19,7 +19,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
         [HttpGet("check")]
         public IActionResult Check()
         {
-            return Ok(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "secret.secure")) ? 1 : 0);
+            return Ok(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".secure")) ? 1 : 0);
         }
 
         [HttpPost("set")]
@@ -30,7 +30,10 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 var firstError = ModelState.Keys.SelectMany(k => ModelState[k].Errors).Select(e => e.ErrorMessage).LastOrDefault();
                 return BadRequest(firstError);
             }
-            System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "secret.secure"), SHA512(body.Password));
+
+            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".secure")))
+                return BadRequest();
+            System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), ".secure"), SHA512(body.Password));
 
             return Ok(GenerateToken());
         }
@@ -45,7 +48,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
             }
 
             var pwd = await System.IO.File.ReadAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(),
-                "secret.secure"));
+                ".secure"));
             if (pwd == SHA512(body.Password))
                 return Ok(GenerateToken());
             return BadRequest("The password is incorrect");
