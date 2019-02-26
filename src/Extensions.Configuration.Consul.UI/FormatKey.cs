@@ -47,11 +47,13 @@ namespace Extensions.Configuration.Consul.UI
             var keys0 = keys.FindAll(p => p.Array.Count > 0).Select(p => p.Array[0]).Distinct().ToList();
             foreach (var key in keys0)
             {
+                var isLast = keys.Any(p => p.FullName == key);
                 var node = new KeyNode
                 {
-                    Id = key + ":",
+                    Id = key + (isLast ? "" : ":"),
                     Name = key,
-                    Type = NodeType.PartKey
+                    Type = isLast ? NodeType.FullKey : NodeType.PartKey,
+                    Text = isLast ? keyValuePairs[key] : null
                 };
                 nodes.Add(node);
                 RecurrenceKeys(keyValuePairs, keys, node, 1);
@@ -81,11 +83,18 @@ namespace Extensions.Configuration.Consul.UI
                     keyNode.Nodes = new List<KeyNode>();
                     foreach (var key in current)
                     {
+                        var fullKey = keyNode.Id;
+                        if (keyNode.Type == NodeType.Folder)
+                            fullKey += key;
+                        else if (keyNode.Type == NodeType.FullKey)
+                            fullKey += ":" + key;
+                        var isLast = keyValuePairs.Any(p => p.Key == key);
                         var node = new KeyNode
                         {
-                            Id = keyNode.Id + key + ":",
+                            Id = fullKey,
                             Name = key,
-                            Type = NodeType.PartKey
+                            Type = isLast ? NodeType.FullKey : NodeType.PartKey,
+                            Text = isLast ? keyValuePairs[key] : null
                         };
                         keyNode.Nodes.Add(node);
                         RecurrenceKeys(keyValuePairs, keys, node, 1);
@@ -124,12 +133,14 @@ namespace Extensions.Configuration.Consul.UI
             }
             foreach (var item in items)
             {
-                var prefix = keyNode.Id + item + ":";
+                var key = keyNode.Id + (keyNode.Type == NodeType.FullKey ? ":" : "") + item;
+                var isLast = keyValuePairs.Any(p => p.Key == key);
                 var node = new KeyNode
                 {
-                    Type = NodeType.PartKey,
-                    Id = prefix,
-                    Name = item
+                    Type = isLast ? NodeType.FullKey : NodeType.PartKey,
+                    Id = key,
+                    Name = item,
+                    Text = isLast ? keyValuePairs[key] : null
                 };
                 keyNode.Nodes.Add(node);
                 RecurrenceKeys(keyValuePairs, keys, node, level + 1);

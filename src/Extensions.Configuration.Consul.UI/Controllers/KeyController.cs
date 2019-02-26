@@ -8,7 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Extensions.Configuration.Consul.UI.Controllers
 {
     [Route("key")]
+#if Release
     [Authorize]
+#endif
     public class KeyController : Controller
     {
         [HttpGet("nodes")]
