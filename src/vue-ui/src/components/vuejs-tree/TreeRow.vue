@@ -69,7 +69,7 @@
           ></i>
         </span>
         <span
-          v-if="options.deleteNode.state == true&&(node.nodes==undefined ||node.nodes.length==0)"
+          v-if="options.deleteNode.state == true&&node.type==2"
           @click.stop="options.deleteNode.fn(parentNode,node)"
           class="icon_parent"
         >

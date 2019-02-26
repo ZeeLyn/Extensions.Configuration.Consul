@@ -133,7 +133,7 @@ namespace Extensions.Configuration.Consul.UI
             }
             foreach (var item in items)
             {
-                var key = keyNode.Id + (keyNode.Type == NodeType.FullKey ? ":" : "") + item;
+                var key = keyNode.Id + (keyNode.Type != NodeType.Folder && !keyNode.Id.EndsWith(":") ? ":" : "") + item;
                 var isLast = keyValuePairs.Any(p => p.Key == key);
                 var node = new KeyNode
                 {

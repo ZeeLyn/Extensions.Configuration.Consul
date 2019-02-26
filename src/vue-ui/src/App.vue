@@ -118,6 +118,10 @@ export default {
     };
   },
   methods: {
+    EndWith:function(source,end){
+      var d=source-end.length;
+      return (d>=0&&source.lastIndexOf(end)==d)
+    },
     load: function() {
       var self = this;
       this.$refs.loading.open();
@@ -156,17 +160,22 @@ export default {
       this.$refs.create_key.close();
       var hasKey = false;
       if (!this.currentNode.nodes) this.currentNode.nodes = [];
+      var key=this.currentNode.id +(this.currentNode.type!=0&& this.EndWith(this.currentNode.id,":")?"":":") + this.newkey;
+      var curent=null;
       this.currentNode.nodes.forEach(e => {
-        if (e.id == this.currentNode.id + this.newkey) {
+        if (e.id ==key ) {
           hasKey = true;
+          curent=e;
           return;
         }
       });
+      /*
       if (hasKey) {
         this.errorMsg = "Duplicate keys detected!";
         this.$refs.error.open();
         return;
       }
+      */
       this.errorMsg = "Operation error!";
       this.$refs.loading.open();
       var key =
@@ -185,17 +194,24 @@ export default {
         })
         .then(res => {
           if (!this.currentNode.nodes) this.currentNode.nodes = [];
-          this.currentNode.nodes.push({
-            id: key,
-            name: this.isFolder
-              ? this.newkey.substring(0, this.newkey.lastIndexOf("/"))
-              : this.newkey,
-            text: this.newkey_value,
-            state: {
-              expanded: true
-            },
-            type: this.isFolder ? 0 : 2
-          });
+          if(hasKey)
+          {
+curent.text=this.newkey_value;
+curent.type=2;
+          }else
+          {
+            this.currentNode.nodes.push({
+              id: key,
+              name: this.isFolder
+                ? this.newkey.substring(0, this.newkey.lastIndexOf("/"))
+                : this.newkey,
+              text: this.newkey_value,
+              state: {
+                expanded: true
+              },
+              type: this.isFolder ? 0 : 2
+            });
+          }
           self.$refs.success.open();
         })
         .catch(function(res) {
@@ -271,7 +287,13 @@ export default {
         .then(res => {
           for (var i = 0; i < parentNode.nodes.length; i++) {
             if (parentNode.nodes[i].id == node.id) {
-              parentNode.nodes.splice(i, 1);
+              if(node.nodes&&node.nodes.length>0)
+              {
+                node.text=null;
+                node.type=1;
+              }
+              else
+                parentNode.nodes.splice(i, 1);
               break;
             }
           }
