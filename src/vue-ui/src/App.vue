@@ -306,7 +306,8 @@ export default {
 </script>
 <style>
 * {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif; margin: 0;
+  padding: 0;
 }
 body{background: #272727;}
 @font-face {
@@ -357,14 +358,14 @@ input[type="text"] {
 }
 .row_data::before {
   content: " ";
-  border-top: 1px solid #eee;
+  border-top: 1px solid #333333;
   position: absolute;
   left: 0;
   top: -1px;
   right: 0;
   height: 1px;
   transform-origin: 0 0;
-  transform: scaleY(0.2);
+  transform: scaleY(0.7);
 }
 span {
   display: flex;
@@ -375,10 +376,6 @@ span {
   background: #363636;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-}
 .icon-closed:before {
   content: "\e903";
   font-size: 15px; 
@@ -415,9 +412,10 @@ span {
 
 .small-tree-indent {
   width: 16px;
-  height: 16px;
-  margin-right: 5px;
+  height: 35px;
+  margin-right: 5px
 }
+
 .icon-panel {
   margin-left: 20px;
 }
@@ -434,4 +432,20 @@ span {
 .text{ color: #eee;font-size:15px;}
 .content{display: flex; justify-content: space-between; width: 100%;}
 .icon-panel{ margin-right: 10px;}
+.tree-indent{height: 35px;}
+.indents:last-child{ border-left: 1px #eee solid}
+.indents .tree-indent{position: relative;}
+.indents .tree-indent::before {
+  content: " ";
+  border-left: 1px dashed #eee;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform-origin: 0 0;
+  transform: scaleX(0.5);
+}
+.indents .tree-indent:nth-child(1)::before{
+  border-left:none;
+}
 </style>

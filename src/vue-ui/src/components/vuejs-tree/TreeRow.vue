@@ -5,7 +5,7 @@
       :style="styles.row.child"
       @click="toggleEvent('selected', node, 'node', $event)"
     >
-      <span
+      <span class="indents"
         @click.stop="options.events.expanded.state == true && node.nodes != undefined && node.nodes.length > 0 && toggleEvent('expanded', node)"
       >
         <span v-for="(count, index) in depth" class="tree-indent" v-bind:key="index"></span>
@@ -373,7 +373,7 @@ export default {
   font-size: 14px;
 }
 .tree-indent {
-  margin: 0 10px;
+  margin: 0 7.5px;
   display: inline-block;
 }
 .small-tree-indent {
@@ -415,4 +415,5 @@ li {
   display: flex;
   align-items: center;
 }
+
 </style>
