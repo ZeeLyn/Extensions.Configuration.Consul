@@ -14,15 +14,7 @@ namespace Extensions.Configuration.Consul.UI
 
         public override string ToString()
         {
-            switch (Type)
-            {
-                case NodeType.Folder:
-                    return Id + "/";
-                case NodeType.PartKey:
-                    return Id + ":";
-                default:
-                    return Id;
-            }
+            return Id;
         }
 
         public string Text { get; set; }

@@ -43,7 +43,7 @@
         :style="selected ? styles.text.active.style : styles.text.style"
         @click.stop="options.events.editableName.state && toggleEvent('editableName', node)"
       >
-          <span class="key">{{ node.name }}</span>
+          <span class="key" :class="[{'folder_icon':node.type==0}]">{{ node.name }}</span>
           <span class="split" v-if="node.type==2">:</span>
           <span class="text">{{node.text}}</span>
       </span>
@@ -69,7 +69,7 @@
           ></i>
         </span>
         <span
-          v-if="options.deleteNode.state == true&&node.type==2"
+          v-if="options.deleteNode.state == true&&(node.nodes==undefined ||node.nodes.length==0)"
           @click.stop="options.deleteNode.fn(parentNode,node)"
           class="icon_parent"
         >

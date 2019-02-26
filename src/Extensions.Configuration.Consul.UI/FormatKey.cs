@@ -26,10 +26,18 @@ namespace Extensions.Configuration.Consul.UI
                     Type = NodeType.Folder
                 };
                 nodes.Add(node);
+                var currentKeys = keyValuePairs.Where(p => p.Key.Contains(node.Id) && p.Key != node.Id && !p.Key.Substring(node.Id.Length, p.Key.Length - node.Id.Length).Contains("/")).Select(p => new NodeInfo
+                {
+                    FullName = p.Key,
+                    Array = p.Key.Substring(node.Id.Length, p.Key.Length - node.Id.Length).Split(':').ToList()
+                }).Where(p => p.Array.Count > 0).ToList();
+                if (currentKeys.Any())
+                    RecurrenceKeys(keyValuePairs, currentKeys, node, 0);
                 RecurrenceFolder(keyValuePairs, folders, node, 1);
             }
             #endregion
 
+            #region Keys
             var keys = keyValuePairs.Where(p => !string.IsNullOrWhiteSpace(p.Key) && !p.Key.Contains("/")).Select(p =>
                 new NodeInfo
                 {
@@ -48,15 +56,18 @@ namespace Extensions.Configuration.Consul.UI
                 nodes.Add(node);
                 RecurrenceKeys(keyValuePairs, keys, node, 1);
             }
-
+            #endregion
             return nodes;
         }
 
         public static void RecurrenceFolder(Dictionary<string, string> keyValuePairs, List<NodeInfo> folders, KeyNode keyNode, int level = 0)
         {
-            var items = folders.FindAll(p => p.Array.Count > level && p.FullName.StartsWith(keyNode.Id)).Select(p => p.Array[level]).Distinct().ToList();
+            var items = folders.FindAll(p => p.Array.Count > level && p.FullName != keyNode.Id && p.FullName.StartsWith(keyNode.Id)).Select(p => p.Array[level]).Distinct().ToList();
             if (items.Any())
-                keyNode.Nodes = new List<KeyNode>();
+            {
+                if (keyNode.Nodes == null)
+                    keyNode.Nodes = new List<KeyNode>();
+            }
             else
             {
                 var keys = keyValuePairs.Where(p => p.Key.StartsWith(keyNode.Id) && p.Key != keyNode.Id).Select(p => new NodeInfo
@@ -101,7 +112,10 @@ namespace Extensions.Configuration.Consul.UI
         {
             var items = keys.FindAll(p => p.Array.Count > level && p.FullName.StartsWith(keyNode.Id)).Select(p => p.Array[level]).Distinct().ToList();
             if (items.Any())
-                keyNode.Nodes = new List<KeyNode>();
+            {
+                if (keyNode.Nodes == null)
+                    keyNode.Nodes = new List<KeyNode>();
+            }
             else
             {
                 keyNode.Id = keyNode.Id.TrimEnd(':');
