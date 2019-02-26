@@ -33,7 +33,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
         }
 
         [HttpPut("put")]
-        public async Task<IActionResult> Edit([FromBody]KeyValue keyValue)
+        public async Task<IActionResult> Edit([FromBody]KeyValue_Value keyValue)
         {
             using (var client = new ConsulClient(options =>
             {
@@ -45,8 +45,26 @@ namespace Extensions.Configuration.Consul.UI.Controllers
             {
                 var result = await client.KV.Put(new KVPair(keyValue.Key) { Value = StringToByte(keyValue.Value) });
                 if (result.StatusCode != System.Net.HttpStatusCode.OK)
-                    return BadRequest();
-                return Ok();
+                    return BadRequest("error");
+                return Ok(true);
+            }
+        }
+
+        [HttpDelete("delete")]
+        public async Task<IActionResult> Delete([FromBody]KeyValue_Key key)
+        {
+            using (var client = new ConsulClient(options =>
+            {
+                options.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
+                options.Token = ObserverManager.Configuration.ClientConfiguration.Token;
+                options.Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter;
+                options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
+            }))
+            {
+                var result = await client.KV.Delete(key.Key);
+                if (result.StatusCode != System.Net.HttpStatusCode.OK)
+                    return BadRequest("error");
+                return Ok(true);
             }
         }
 

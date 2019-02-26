@@ -15,12 +15,7 @@
       :blocking="true"
       :hide-close-button="true"
     >loading</sweet-modal>
-    <sweet-modal
-      title="New Key/Value"
-      ref="create_key"
-      overlay-theme="dark"
-      modal-theme="dark"
-    >
+    <sweet-modal title="New Key/Value" ref="create_key" overlay-theme="dark" modal-theme="dark">
       <div class="row">
         <span>Key or folder</span>
         <input
@@ -36,15 +31,19 @@
       </div>
       <a class="btn" slot="button" v-on:click="new_key_submit" color="light-grey">Save</a>
     </sweet-modal>
-     <sweet-modal
-      :title="update_key"
-      ref="update_key"
-      overlay-theme="dark"
-      modal-theme="dark"
-    >
-        <input type="text" v-model="update_key_value">
+    <sweet-modal :title="update_key" ref="update_key" overlay-theme="dark" modal-theme="dark">
+      <input type="text" v-model="update_key_value">
       <a class="btn" slot="button" v-on:click="update_key_submit" color="light-grey">Save</a>
     </sweet-modal>
+
+    <sweet-modal
+      ref="success"
+      icon="success"
+      overlay-theme="dark"
+      modal-theme="dark"
+    >Successfully saved!</sweet-modal>
+
+    <sweet-modal ref="error" icon="error" overlay-theme="dark" modal-theme="dark">Operation error!</sweet-modal>
   </div>
 </template>
 
@@ -63,12 +62,12 @@ export default {
     return {
       newkey: null,
       newkey_value: null,
-      update_key:null,
-      update_key_value:null,
+      update_key: null,
+      update_key_value: null,
       isFolder: false,
       treeDisplayData: [],
-      currentParentNode:null,
-      currentNode:null
+      currentParentNode: null,
+      currentNode: null
     };
   },
   methods: {
@@ -78,8 +77,8 @@ export default {
         self.treeDisplayData = res.data;
       });
     },
-    open_new_key: function(parentNode,node) {
-      this.currentNode=node;
+    open_new_key: function(parentNode, node) {
+      this.currentNode = node;
       this.$refs.create_key.open();
     },
     input_key: function(e) {
@@ -92,35 +91,88 @@ export default {
       this.isFolder = folder;
     },
     new_key_submit: function() {
-      console.log(this.currentNode.id);
       this.$refs.create_key.close();
       this.$refs.loading.open();
-      var key=this.currentNode.id+this.newkey;
-      axios.put("http://localhost:5342/key/put",{
-        key:key,
-        value:this.newkey_value
-      }).then(res=>{
-        if(!this.currentNode.nodes)
-          this.currentNode.nodes=[];
+      var key = this.currentNode.id + this.newkey;
+      var self = this;
+      axios
+        .put("http://localhost:5342/key/put", {
+          key: key,
+          value: this.newkey_value
+        })
+        .then(res => {
+          if (!this.currentNode.nodes) this.currentNode.nodes = [];
           this.currentNode.nodes.push({
-            id:key,
-            name:this.newkey,
-            text:this.newkey_value,
-            state:{
-              expanded:true
+            id: key,
+            name: this.isFolder
+              ? this.newkey.substring(0, this.newkey.lastIndexOf("/"))
+              : this.newkey,
+            text: this.newkey_value,
+            state: {
+              expanded: true
             },
-            type:2
+            type: this.isFolder ? 0 : 2
           });
-        this.$refs.loading.close();
-      });
+          self.$refs.success.open();
+        })
+        .catch(function(res) {
+          self.$refs.error.open();
+        })
+        .then(function() {
+          self.$refs.loading.close();
+        });
     },
-    open_update_key:function(node){
-        this.update_key=node.name;
-        this.update_key_value=node.text;
-        this.$refs.update_key.open();
+    open_update_key: function(node) {
+      this.currentNode = node;
+      this.update_key = node.name;
+      this.update_key_value = node.text;
+      this.$refs.update_key.open();
     },
-    update_key_submit:function(){
-
+    update_key_submit: function() {
+      this.$refs.update_key.close();
+      this.$refs.loading.open();
+      var self = this;
+      axios
+        .put("http://localhost:5342/key/put", {
+          key: this.currentNode.id,
+          value: this.update_key_value
+        })
+        .then(res => {
+          self.currentNode.text = this.update_key_value;
+          self.$refs.loading.close();
+          self.$refs.success.open();
+        })
+        .catch(function(res) {
+          self.$refs.error.open();
+        })
+        .then(function() {
+          self.$refs.loading.close();
+        });
+    },
+    delete_key_submit: function(parentNode, node) {
+      this.$refs.loading.open();
+      var self = this;
+      axios
+        .delete("http://localhost:5342/key/delete", {
+          data: { key: node.id }
+        })
+        .then(res => {
+          for (var i = 0; i < parentNode.nodes.length; i++) {
+            if (parentNode.nodes[i].id == node.id) {
+              parentNode.nodes.splice(i, 1);
+              break;
+            }
+          }
+          self.$refs.loading.close();
+          self.$refs.success.open();
+        })
+        .catch(function(res) {
+          console.error(res);
+          self.$refs.error.open();
+        })
+        .then(function() {
+          self.$refs.loading.close();
+        });
     }
   },
   components: {
@@ -200,15 +252,7 @@ export default {
         },
         deleteNode: {
           state: true,
-          fn: function(parent, node) {
-            for (var i = 0; i < parent.nodes.length; i++) {
-              console.log(parent.nodes[i].id);
-              if (parent.nodes[i].id == node.id) {
-                parent.nodes.splice(i, 1);
-                break;
-              }
-            }
-          },
+          fn: this.delete_key_submit,
           appearOnHover: false
         },
         showTags: true
