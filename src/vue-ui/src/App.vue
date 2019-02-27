@@ -2,7 +2,7 @@
   <div id="app">
     <header>
       <span>Consul configuration center</span>
-      <div class="menu"><span class="menu_icon"></span>
+      <div class="menu" v-if="logined"><span class="menu_icon"></span>
         <ul>
           <li v-on:click="changePassword"><a>Change password</a></li>
            <li v-on:click="logout"><a>Sign out</a></li>
@@ -82,6 +82,27 @@
       <a class="btn" slot="button" v-on:click="set_password" color="light-grey">Save</a>
     </sweet-modal>
 
+     <sweet-modal
+      title="Change password"
+      ref="change_password"
+      modal-theme="dark"
+    >
+      <div class="row">
+        <span>Old password</span>
+        <input type="password" minlength="6" maxlength="18" v-model="changePassword.oldPassword">
+      </div>
+      <div class="row">
+        <span>New password</span>
+        <input type="password" minlength="6" maxlength="18" v-model="changePassword.newPassword">
+      </div>
+      <div class="row">
+        <span>Re-Enter</span>
+        <input type="password" minlength="6" maxlength="18" v-model="changePassword.reEnter_password">
+      </div>
+      <span style="color:#D93600;">{{change_password_error_message}}</span>
+      <a class="btn" slot="button" v-on:click="change_password_submit" color="light-grey">Save</a>
+    </sweet-modal>
+
     <sweet-modal
       title="Sign in"
       ref="login"
@@ -112,6 +133,7 @@ export default {
   },
   data: function() {
     return {
+      logined:false,
       newkey: null,
       newkey_value: null,
       update_key: null,
@@ -125,7 +147,8 @@ export default {
       reEnter_password: null,
       set_password_error_message: null,
       login_error_message: null,
-      new_key_error_message:null
+      new_key_error_message:null,
+      change_password_error_message:null
     };
   },
   methods: {
@@ -144,6 +167,7 @@ export default {
         })
         .then(function(res) {
           self.treeDisplayData = res.data;
+           self.logined=true;
         })
         .catch(function(err) {
           if (err.response && err.response.status == 401) {
@@ -352,6 +376,7 @@ export default {
         .then(function(res) {
           self.$refs.login.close();
           localStorage.setItem("access_token", res.data);
+          self.logined=true;
           self.load();
         })
         .catch(function(err) {
@@ -362,10 +387,33 @@ export default {
     },
     logout:function(){
       localStorage.removeItem("access_token");
+      this.logined=false;
       this.check_auth();
     },
     changePassword:function(){
-
+      this.changePassword={};
+      this.$refs.change_password.open();
+    },
+    change_password_submit:function(){
+      var self = this;
+      this.$refs.loading.open();
+      axios
+        .put("http://localhost:5342/account/change.password", {
+          oldPassword: self.changePassword.oldPassword,
+          newPassword:self.changePassword.newPassword,
+          reEnter: self.changePassword.reEnter_password
+        })
+        .then(function(res) {
+          self.$refs.change_password.close();
+          localStorage.setItem("access_token", res.data);
+        })
+        .catch(function(err) {
+          if (err.response && err.response.data)
+            self.change_password_error_message = err.response.data;
+        })
+        .then(function() {
+          self.$refs.loading.close();
+        });
     }
   },
   components: {
