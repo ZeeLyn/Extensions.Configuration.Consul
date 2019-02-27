@@ -50,7 +50,7 @@
       <span class="icon-panel">
         <span
           v-if="options.addNode.state == true"
-          @click.stop="options.addNode.fn(parentNode,node)"
+          @click.stop="options.addNode.fn(node)"
           class="icon_parent"
         >
           <i
@@ -69,7 +69,7 @@
           ></i>
         </span>
         <span
-          v-if="options.deleteNode.state == true&&node.type==2"
+          v-if="options.deleteNode.state == true"
           @click.stop="options.deleteNode.fn(parentNode,node)"
           class="icon_parent"
         >
@@ -388,10 +388,7 @@ export default {
   visibility: visible;
   opacity: 1;
 }
-.capitalize {
-  text-transform: capitalize;
-  font-size: 14px;
-}
+
 .badge {
   font-size: 12px;
   font-weight: normal;

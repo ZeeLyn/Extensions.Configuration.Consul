@@ -3,6 +3,9 @@
     <header>
       <span>Consul configuration center</span>
     </header>
+    <div class="tool">
+    <a class="add_icon new" v-on:click="open_new_key(null)">NEW</a>
+    </div>
     <tree
       id="my-tree-id"
       :custom-options="myCustomOptions"
@@ -31,6 +34,7 @@
         <span>Value</span>
         <input type="text" v-model="newkey_value">
       </div>
+      <span style="color:#D93600;">{{new_key_error_message}}</span>
       <a class="btn" slot="button" v-on:click="new_key_submit" color="light-grey">Save</a>
     </sweet-modal>
     <sweet-modal :title="update_key" ref="update_key" modal-theme="dark">
@@ -114,13 +118,14 @@ export default {
       password: null,
       reEnter_password: null,
       set_password_error_message: null,
-      login_error_message:null
+      login_error_message: null,
+      new_key_error_message:null
     };
   },
   methods: {
-    EndWith:function(source,end){
-      var d=source-end.length;
-      return (d>=0&&source.lastIndexOf(end)==d)
+    EndWith: function(source, end) {
+      var d = source.length - end.length;
+      return d >= 0 && source.lastIndexOf(end) == d;
     },
     load: function() {
       var self = this;
@@ -143,84 +148,64 @@ export default {
           self.$refs.loading.close();
         });
     },
-    open_new_key: function(parentNode, node) {
-      this.currentNode = node;
+    open_new_key: function(node) {
+      if(node)
+        this.currentNode = node;
+      else
+        this.currentNode={
+          type:0,
+          id:""
+        };
       this.$refs.create_key.open();
     },
     input_key: function(e) {
-      if (!e.data) {
+      if (!this.newkey) {
         this.isFolder = false;
         return;
       }
-      var d = e.data.length - 1;
-      var folder = d >= 0 && e.data.lastIndexOf("/") == d;
-      this.isFolder = folder;
+      this.isFolder = this.EndWith(this.newkey,"/");
+      if(this.EndWith(this.newkey,":"))
+        this.new_key_error_message="Key is not allowed to end with \" : \"";
+      else
+          this.new_key_error_message=null;
     },
     new_key_submit: function() {
-      this.$refs.create_key.close();
-      var hasKey = false;
-      if (!this.currentNode.nodes) this.currentNode.nodes = [];
-      var key=this.currentNode.id +(this.currentNode.type!=0&& this.EndWith(this.currentNode.id,":")?"":":") + this.newkey;
-      var curent=null;
-      this.currentNode.nodes.forEach(e => {
-        if (e.id ==key ) {
-          hasKey = true;
-          curent=e;
-          return;
-        }
-      });
-      /*
-      if (hasKey) {
-        this.errorMsg = "Duplicate keys detected!";
-        this.$refs.error.open();
+      if(this.EndWith(this.newkey,":"))
         return;
-      }
-      */
-      this.errorMsg = "Operation error!";
-      this.$refs.loading.open();
+      this.$refs.create_key.close();
       var key =
         this.currentNode.id +
-        (this.currentNode.type == 2 ? ":" : "") +
+        (this.currentNode.type != 0 && !this.EndWith(this.currentNode.id, ":")
+          ? ":"
+          : "") +
         this.newkey;
+      this.$refs.loading.open();
       var self = this;
       axios
-        .put("http://localhost:5342/key/put", {
-          key: key,
-          value: this.newkey_value
-        },{
-          headers: {
+        .put(
+          "http://localhost:5342/key/put",
+          {
+            key: key,
+            value: this.newkey_value
+          },
+          {
+            headers: {
               Authorization: "Bearer " + localStorage.getItem("access_token")
             }
-        })
-        .then(res => {
-          if (!this.currentNode.nodes) this.currentNode.nodes = [];
-          if(hasKey)
-          {
-curent.text=this.newkey_value;
-curent.type=2;
-          }else
-          {
-            this.currentNode.nodes.push({
-              id: key,
-              name: this.isFolder
-                ? this.newkey.substring(0, this.newkey.lastIndexOf("/"))
-                : this.newkey,
-              text: this.newkey_value,
-              state: {
-                expanded: true
-              },
-              type: this.isFolder ? 0 : 2
-            });
           }
-          self.$refs.success.open();
+        )
+        .then(res => {
+          self.new_key_error_message=null;
+          self.currentNode = null;
+          (self.newkey = null), (self.newkey_value = null);
+          self.load();
         })
         .catch(function(res) {
-          self.$refs.error.open();
+          self.new_key_error_message=res.response.data;
+          self.$refs.create_key.open();
         })
         .then(function() {
           self.$refs.loading.close();
-          self.currentNode = null;
-          (self.newkey = null), (self.newkey_value = null);
         });
     },
     open_update_key: function(node) {
@@ -247,9 +232,7 @@ curent.type=2;
           }
         )
         .then(res => {
-          self.currentNode.text = this.update_key_value;
-          self.$refs.loading.close();
-          self.$refs.success.open();
+          self.load();
         })
         .catch(function(res) {
           self.$refs.error.open();
@@ -278,27 +261,20 @@ curent.type=2;
       var parentNode = this.currentParentNode;
       var node = this.currentNode;
       axios
-        .delete("http://localhost:5342/key/delete", {
-          data: { key: node.id },
-          headers:{
-            Authorization: "Bearer " + localStorage.getItem("access_token")
-          }
-        })
-        .then(res => {
-          for (var i = 0; i < parentNode.nodes.length; i++) {
-            if (parentNode.nodes[i].id == node.id) {
-              if(node.nodes&&node.nodes.length>0)
-              {
-                node.text=null;
-                node.type=1;
-              }
-              else
-                parentNode.nodes.splice(i, 1);
-              break;
+        .delete(
+          "http://localhost:5342/key/delete/" +
+            (node.nodes != undefined && node.nodes.length > 0 && node.type < 2
+              ? "true"
+              : "false"),
+          {
+            data: { key: node.id },
+            headers: {
+              Authorization: "Bearer " + localStorage.getItem("access_token")
             }
           }
-          self.$refs.loading.close();
-          self.$refs.success.open();
+        )
+        .then(res => {
+          self.load();
         })
         .catch(function(res) {
           console.error(res);
@@ -318,7 +294,7 @@ curent.type=2;
             self.$refs.loading.close();
             self.$refs.set_password.open();
           } else {
-             self.$refs.loading.close();
+            self.$refs.loading.close();
             self.$refs.login.open();
           }
         })
@@ -350,8 +326,8 @@ curent.type=2;
           self.$refs.loading.close();
         });
     },
-    login:function(){
-      var self=this;
+    login: function() {
+      var self = this;
       axios
         .post("http://localhost:5342/account/login", {
           password: self.password
@@ -365,9 +341,7 @@ curent.type=2;
           if (err.response && err.response.data)
             self.login_error_message = err.response.data;
         })
-        .then(function() {
-
-        });
+        .then(function() {});
     }
   },
   components: {
@@ -626,6 +600,7 @@ span {
   transform-origin: 0 0;
   transform: scaleX(0.5);
 }
+
 .indents .tree-indent:nth-child(1)::before {
   border-left: none;
 }
@@ -642,4 +617,7 @@ header span {
   margin-left: 15px;
   font-size: 20px;
 }
+.tool{ margin:10px 0; display: block;}
+.new{ padding: 5px 15px 5px 5px; text-indent: 10px; border:1px #3a3a3a solid; display: inline-block; margin-left:15px; color: #fff; cursor: pointer;}
+.new::before{margin-right: 5px; font-size:12px;}
 </style>

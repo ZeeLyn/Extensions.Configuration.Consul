@@ -37,8 +37,10 @@ namespace Extensions.Configuration.Consul.UI.Controllers
         }
 
         [HttpPut("put")]
-        public async Task<IActionResult> Edit([FromBody]KeyValue_Value keyValue)
+        public async Task<IActionResult> Put([FromBody]KeyValue_Value keyValue)
         {
+            if (keyValue.Key.EndsWith(":"))
+                return BadRequest("Key is not allowed to end with ':'");
             using (var client = new ConsulClient(options =>
             {
                 options.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
@@ -54,8 +56,8 @@ namespace Extensions.Configuration.Consul.UI.Controllers
             }
         }
 
-        [HttpDelete("delete")]
-        public async Task<IActionResult> Delete([FromBody]KeyValue_Key key)
+        [HttpDelete("delete/{delChildren:bool}")]
+        public async Task<IActionResult> Delete([FromBody]KeyValue_Key key, bool delChildren)
         {
             using (var client = new ConsulClient(options =>
             {
@@ -65,7 +67,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
             }))
             {
-                var result = await client.KV.Delete(key.Key);
+                var result = delChildren ? await client.KV.DeleteTree(key.Key) : await client.KV.Delete(key.Key);
                 if (result.StatusCode != System.Net.HttpStatusCode.OK)
                     return BadRequest("error");
                 return Ok(true);
