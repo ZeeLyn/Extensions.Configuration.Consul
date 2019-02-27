@@ -9,8 +9,8 @@
         </ul>
       </div>
     </header>
-    <div class="tool">
-    <a class="add_icon new" v-on:click="open_new_key(null)">NEW</a>
+    <div class="tool" v-if="logined">
+    <a class="add_icon new" v-on:click="open_new_key(null)">NEW KEY/VALUE</a>
     </div>
     <tree
       id="my-tree-id"
@@ -25,7 +25,7 @@
       modal-theme="dark"
       :blocking="true"
       :hide-close-button="true"
-    >loading</sweet-modal>
+    >loading...</sweet-modal>
     <sweet-modal title="New Key/Value" ref="create_key" modal-theme="dark">
       <div class="row">
         <span>Key or folder</span>
@@ -125,7 +125,9 @@ import Vue from "vue";
 import Tree from "@/components/vuejs-tree";
 const axios = require("axios");
 import { SweetModal, SweetModalTab } from "sweet-modal-vue";
-
+var host="http://localhost:5342/api";
+if(process.env.NODE_ENV=="production")
+  host="/api";
 export default {
   name: "app",
   mounted: function() {
@@ -160,7 +162,7 @@ export default {
       var self = this;
       this.$refs.loading.open();
       axios
-        .get("http://localhost:5342/key/nodes", {
+        .get(host+"/key/nodes", {
           headers: {
             Authorization: "Bearer " + localStorage.getItem("access_token")
           }
@@ -213,7 +215,7 @@ export default {
       var self = this;
       axios
         .put(
-          "http://localhost:5342/key/put",
+          host+"/key/put",
           {
             key: key,
             value: this.newkey_value
@@ -299,7 +301,7 @@ export default {
       var node = this.currentNode;
       axios
         .delete(
-          "http://localhost:5342/key/delete/" +
+          host+"/key/delete/" +
             (node.nodes != undefined && node.nodes.length > 0 && node.type < 2
               ? "true"
               : "false"),
@@ -327,7 +329,7 @@ export default {
       var self = this;
       this.$refs.loading.open();
       axios
-        .get("http://localhost:5342/account/check")
+        .get(host+"/account/check")
         .then(function(res) {
           if (res.data == 0) {
             self.$refs.loading.close();
@@ -350,7 +352,7 @@ export default {
       var self = this;
       this.$refs.loading.open();
       axios
-        .post("http://localhost:5342/account/set", {
+        .post(host+"/account/set", {
           password: self.password,
           reEnter: self.reEnter_password
         })
@@ -370,7 +372,7 @@ export default {
     login: function() {
       var self = this;
       axios
-        .post("http://localhost:5342/account/login", {
+        .post(host+"/account/login", {
           password: self.password
         })
         .then(function(res) {
@@ -398,7 +400,7 @@ export default {
       var self = this;
       this.$refs.loading.open();
       axios
-        .put("http://localhost:5342/account/change.password", {
+        .put(host+"/account/change.password", {
           oldPassword: self.changePassword.oldPassword,
           newPassword:self.changePassword.newPassword,
           reEnter: self.changePassword.reEnter_password

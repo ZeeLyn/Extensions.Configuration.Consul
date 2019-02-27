@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Consul;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,9 +22,16 @@ namespace Extensions.Configuration.Consul.UI
     {
         private IWebHost WebHost { get; set; }
 
+        private UIOptions UIOptions { get; }
+
+        public UIHostedService(UIOptions uIOptions)
+        {
+            UIOptions = uIOptions;
+        }
+
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            WebHost = new WebHostBuilder().UseUrls("http://*:5342").UseKestrel().UseContentRoot(Directory.GetCurrentDirectory()).UseStartup<Startup>().Build();
+            WebHost = new WebHostBuilder().UseUrls($"http://{UIOptions.IP}:{UIOptions.Port}").UseKestrel().UseContentRoot(Directory.GetCurrentDirectory()).UseStartup<Startup>().Build();
             await WebHost.RunAsync(token: cancellationToken);
         }
 
@@ -47,6 +55,16 @@ namespace Extensions.Configuration.Consul.UI
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddScoped<IConsulClient>(sp =>
+            {
+                return new ConsulClient(cfg =>
+                {
+                    cfg.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
+                    cfg.Token = ObserverManager.Configuration.ClientConfiguration.Token;
+                    cfg.Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter;
+                    cfg.Address = ObserverManager.Configuration.ClientConfiguration.Address;
+                });
+            });
             var signingKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("CC9800B9-DFEF-4644-B862-FB630DFB880E"));
             var validationParameters = new TokenValidationParameters
             {
@@ -78,17 +96,25 @@ namespace Extensions.Configuration.Consul.UI
 
             app.UseAuthentication();
 
-            app.UseDefaultFiles();
+
             app.UseCors(b =>
             {
                 b.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().AllowCredentials();
             });
+
+            var fileProvider = new CompositeFileProvider(new EmbeddedFileProvider(typeof(Startup).GetTypeInfo().Assembly));
+            app.UseDefaultFiles(new DefaultFilesOptions
+            {
+                FileProvider = fileProvider,
+                DefaultFileNames = new[] { "index.html" }
+            });
+
             app.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new CompositeFileProvider(new EmbeddedFileProvider(typeof(Startup).GetTypeInfo().Assembly)),
-                ServeUnknownFileTypes = true,
-                RequestPath = "/consul-configuration"
+                FileProvider = fileProvider,
+                ServeUnknownFileTypes = true
             });
+
             app.UseMvc();
         }
     }

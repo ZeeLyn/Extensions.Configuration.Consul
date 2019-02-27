@@ -7,33 +7,31 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Extensions.Configuration.Consul.UI.Controllers
 {
-    [Route("key")]
-#if Release
+    [Route("api/key")]
     [Authorize]
-#endif
     public class KeyController : Controller
     {
+
+        private IConsulClient Client { get; }
+
+        public KeyController(IConsulClient client)
+        {
+            Client = client;
+        }
+
         [HttpGet("nodes")]
         public async Task<IActionResult> Nodes()
         {
-            using (var client = new ConsulClient(options =>
+            var result = await Client.KV.List(ObserverManager.Configuration.QueryOptions.Folder, new QueryOptions
             {
-                options.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
-                options.Token = ObserverManager.Configuration.ClientConfiguration.Token;
-                options.Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter;
-                options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
-            }))
-            {
-                var result = await client.KV.List(ObserverManager.Configuration.QueryOptions.Folder, new QueryOptions
-                {
-                    Token = ObserverManager.Configuration.ClientConfiguration.Token,
-                    Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter
-                });
-                if (result.StatusCode != System.Net.HttpStatusCode.OK)
-                    return BadRequest();
-                return Ok(FormatKey.FormatFolder(result.Response.ToDictionary(key => key.Key,
-                    value => ByteToString(value.Value))));
-            }
+                Token = ObserverManager.Configuration.ClientConfiguration.Token,
+                Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter
+            });
+            if (result.StatusCode != System.Net.HttpStatusCode.OK)
+                return BadRequest();
+            return Ok(FormatKey.FormatFolder(result.Response.ToDictionary(key => key.Key,
+                value => ByteToString(value.Value))));
+
         }
 
         [HttpPut("put")]
@@ -41,37 +39,21 @@ namespace Extensions.Configuration.Consul.UI.Controllers
         {
             if (keyValue.Key.EndsWith(":"))
                 return BadRequest("Key is not allowed to end with ':'");
-            using (var client = new ConsulClient(options =>
-            {
-                options.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
-                options.Token = ObserverManager.Configuration.ClientConfiguration.Token;
-                options.Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter;
-                options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
-            }))
-            {
-                var result = await client.KV.Put(new KVPair(keyValue.Key) { Value = StringToByte(keyValue.Value) });
-                if (result.StatusCode != System.Net.HttpStatusCode.OK)
-                    return BadRequest("error");
-                return Ok(true);
-            }
+
+            var result = await Client.KV.Put(new KVPair(keyValue.Key) { Value = StringToByte(keyValue.Value) });
+            if (result.StatusCode != System.Net.HttpStatusCode.OK)
+                return BadRequest("error");
+            return Ok(true);
+
         }
 
         [HttpDelete("delete/{delChildren:bool}")]
         public async Task<IActionResult> Delete([FromBody]KeyValue_Key key, bool delChildren)
         {
-            using (var client = new ConsulClient(options =>
-            {
-                options.WaitTime = ObserverManager.Configuration.ClientConfiguration.WaitTime;
-                options.Token = ObserverManager.Configuration.ClientConfiguration.Token;
-                options.Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter;
-                options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
-            }))
-            {
-                var result = delChildren ? await client.KV.DeleteTree(key.Key) : await client.KV.Delete(key.Key);
-                if (result.StatusCode != System.Net.HttpStatusCode.OK)
-                    return BadRequest("error");
-                return Ok(true);
-            }
+            var result = delChildren ? await Client.KV.DeleteTree(key.Key) : await Client.KV.Delete(key.Key);
+            if (result.StatusCode != System.Net.HttpStatusCode.OK)
+                return BadRequest("error");
+            return Ok(true);
         }
 
         private string ByteToString(byte[] bytes)

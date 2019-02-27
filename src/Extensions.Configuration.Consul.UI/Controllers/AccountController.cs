@@ -13,13 +13,15 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Extensions.Configuration.Consul.UI.Controllers
 {
-    [Route("account")]
+    [Route("api/account")]
     public class AccountController : Controller
     {
+        private const string SecureFile = ".secure";
+
         [HttpGet("check")]
         public IActionResult Check()
         {
-            return Ok(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".secure")) ? 1 : 0);
+            return Ok(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), SecureFile)) ? 1 : 0);
         }
 
         [HttpPost("set")]
@@ -31,7 +33,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 return BadRequest(firstError);
             }
 
-            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".secure")))
+            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), SecureFile)))
                 return BadRequest();
             System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), ".secure"), SHA512(body.Password));
 
@@ -47,8 +49,7 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 return BadRequest(firstError);
             }
 
-            var file = Path.Combine(Directory.GetCurrentDirectory(),
-                ".secure");
+            var file = Path.Combine(Directory.GetCurrentDirectory(), SecureFile);
             if (!System.IO.File.Exists(file))
                 return BadRequest("error");
             var pwd = await System.IO.File.ReadAllTextAsync(file);
@@ -65,14 +66,13 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 var firstError = ModelState.Keys.SelectMany(k => ModelState[k].Errors).Select(e => e.ErrorMessage).LastOrDefault();
                 return BadRequest(firstError);
             }
-            var file = Path.Combine(Directory.GetCurrentDirectory(),
-                ".secure");
+            var file = Path.Combine(Directory.GetCurrentDirectory(), SecureFile);
             if (!System.IO.File.Exists(file))
                 return BadRequest("error");
             var pwd = await System.IO.File.ReadAllTextAsync(file);
             if (pwd != SHA512(body.OldPassword))
                 return BadRequest("Old password is incorrect.");
-            System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), ".secure"), SHA512(body.NewPassword));
+            System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), SecureFile), SHA512(body.NewPassword));
             return Ok(GenerateToken());
         }
 

@@ -6,8 +6,11 @@
   </PropertyGroup>
 
 
+
   <ItemGroup>
-    <EmbeddedResource Include="resources\index.html" />
+    <EmbeddedResource Include="index.html" />
+    <EmbeddedResource Include="static\css\*.css" />
+    <EmbeddedResource Include="static\js\*.js" />
   </ItemGroup>
 
   <ItemGroup>
