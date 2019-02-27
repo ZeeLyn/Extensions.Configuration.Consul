@@ -47,8 +47,11 @@ namespace Extensions.Configuration.Consul.UI.Controllers
                 return BadRequest(firstError);
             }
 
-            var pwd = await System.IO.File.ReadAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(),
-                ".secure"));
+            var file = Path.Combine(Directory.GetCurrentDirectory(),
+                ".secure");
+            if (!System.IO.File.Exists(file))
+                return BadRequest("error");
+            var pwd = await System.IO.File.ReadAllTextAsync(file);
             if (pwd == SHA512(body.Password))
                 return Ok(GenerateToken());
             return BadRequest("The password is incorrect");
