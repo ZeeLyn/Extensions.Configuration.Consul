@@ -9,7 +9,7 @@ namespace Extensions.Configuration.Consul
 {
     public static class ExtensionsMethods
     {
-        public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, string address = "http://127.0.0.1:8500", string token = "", string folder = "", string dataCenter = "dc1")
+        public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, string address = "http://127.0.0.1:8500", string token = "", string folder = "", string dataCenter = "")
         {
             if (string.IsNullOrWhiteSpace(address))
                 throw new ArgumentNullException(nameof(address), "The address can't be empty.");
@@ -17,48 +17,26 @@ namespace Extensions.Configuration.Consul
             if (!string.IsNullOrWhiteSpace(folder) && !folder.EndsWith("/"))
                 throw new ArgumentException("Folder must end with \"/\".");
 
-            return Add(configurationBuilder, new ConsulAgentConfiguration
-            {
-                ClientConfiguration = new ConsulClientConfiguration
-                {
-                    Address = new Uri(address),
-                    Token = token,
-                    Datacenter = dataCenter
-                },
-                QueryOptions = new ConsulQueryOptions
-                {
-                    Folder = folder
-                }
-            });
-        }
-        public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, ConsulClientConfiguration consulClientConfiguration, string folder = "")
-        {
-            if (consulClientConfiguration == null)
-                throw new ArgumentNullException(nameof(consulClientConfiguration), "The agent url can't be empty.");
+            var cfg = new ConsulAgentConfiguration();
+            if (!string.IsNullOrWhiteSpace(address))
+                cfg.ClientConfiguration.Address = new Uri(address);
+            if (!string.IsNullOrWhiteSpace(token))
+                cfg.ClientConfiguration.Token = token;
+            if (!string.IsNullOrWhiteSpace(dataCenter))
+                cfg.ClientConfiguration.Datacenter = dataCenter;
 
-            if (!string.IsNullOrWhiteSpace(folder) && !folder.EndsWith("/"))
-                throw new ArgumentException("Folder must end with \"/\".");
+            if (!string.IsNullOrWhiteSpace(folder))
+                cfg.QueryOptions.Folder = folder;
 
-            return Add(configurationBuilder, new ConsulAgentConfiguration
-            {
-                ClientConfiguration = consulClientConfiguration,
-                QueryOptions = new ConsulQueryOptions
-                {
-                    Folder = folder
-                }
-            });
+            configurationBuilder.Add(new ConsulConfigurationSource(cfg));
+            return configurationBuilder;
         }
+
 
         public static IConfigurationBuilder AddConsul(this IConfigurationBuilder configurationBuilder, string[] args)
         {
             var dic = ParseCommandLineArgs(args);
-            return configurationBuilder.AddConsul(new ConsulClientConfiguration
-            {
-                Address = new Uri(dic.GetDictionaryValue("consul-configuration-addr", "http://127.0.0.1:8500")),
-                Token = dic.GetDictionaryValue("consul-configuration-token"),
-                Datacenter = dic.GetDictionaryValue("consul-configuration-dc", "dc1"),
-                WaitTime = TimeSpan.FromSeconds(10)
-            }, dic.GetDictionaryValue("consul-configuration-folder"));
+            return configurationBuilder.AddConsul(dic.GetDictionaryValue("consul-configuration-addr"), dic.GetDictionaryValue("consul-configuration-token"), dic.GetDictionaryValue("consul-configuration-dc"), dic.GetDictionaryValue("consul-configuration-folder"));
         }
 
         private static string GetDictionaryValue(this Dictionary<string, string> dictionary, string key, string defaultValue = "")
@@ -75,11 +53,6 @@ namespace Extensions.Configuration.Consul
             services.AddSingleton(new HostedServiceOptions { BlockingQueryWait = TimeSpan.FromSeconds(blockingQueryWaitSeconds) });
             services.AddSingleton<IHostedService, ConsulConfigurationHostedService>();
             return services;
-        }
-
-        private static IConfigurationBuilder Add(IConfigurationBuilder configurationBuilder, ConsulAgentConfiguration configuration)
-        {
-            return configurationBuilder.Add(new ConsulConfigurationSource(configuration));
         }
 
         internal static string TrimFolderPrefix(this string key, string folder)

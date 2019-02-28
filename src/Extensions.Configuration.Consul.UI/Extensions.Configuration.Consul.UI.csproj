@@ -3,6 +3,12 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>2.0.1</Version>
+    <Description>Consul configuration center</Description>
+    <PackageProjectUrl>https://github.com/ww198643/Extensions.Configuration.Consul</PackageProjectUrl>
+    <PackageIconUrl>https://github.com/ww198643/Dapper.Extensions/raw/master/icon.jpg</PackageIconUrl>
+    <PackageTags>configuration,config,consul</PackageTags>
+    <PackageReleaseNotes>Extensions.Configuration.Consul</PackageReleaseNotes>
   </PropertyGroup>
 
 

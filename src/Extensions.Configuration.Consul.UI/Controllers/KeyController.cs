@@ -11,7 +11,6 @@ namespace Extensions.Configuration.Consul.UI.Controllers
     [Authorize]
     public class KeyController : Controller
     {
-
         private IConsulClient Client { get; }
 
         public KeyController(IConsulClient client)

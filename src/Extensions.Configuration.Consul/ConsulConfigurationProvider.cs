@@ -21,7 +21,7 @@ namespace Extensions.Configuration.Consul
 
         public override void Load()
         {
-            //QueryConsulAsync().GetAwaiter().GetResult();
+            QueryConsulAsync().GetAwaiter().GetResult();
         }
 
 

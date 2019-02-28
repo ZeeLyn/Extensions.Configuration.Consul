@@ -7,7 +7,7 @@ namespace Extensions.Configuration.Consul
         /// <summary>
         /// The prefix string of consul key
         /// </summary>
-        public string Folder { get; set; }
+        public string Folder { get; set; } = Environment.GetEnvironmentVariable("consul-configuration-folder") ?? "";
 
     }
 

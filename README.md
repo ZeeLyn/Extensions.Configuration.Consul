@@ -5,6 +5,7 @@ Configuration center based on consul.
 Package | NuGet
 ---------|------
 Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/Extensions.Configuration.Consul)](https://www.nuget.org/packages/Extensions.Configuration.Consul)
+Extensions.Configuration.Consul.UI|[![NuGet package](https://buildstats.info/nuget/Extensions.Configuration.Consul.UI)](https://www.nuget.org/packages/Extensions.Configuration.Consul.UI)
 
 
 
@@ -26,8 +27,8 @@ Extensions.Configuration.Consul|[![NuGet package](https://buildstats.info/nuget/
 	  }
 ```
 
-## Command line configuration
-Command | Describetion
+## Command line configuration/Environment variable configuration
+Command/Environment variable | Describetion
 ---------|------
 consul-configuration-addr|Consul agent address
 consul-configuration-token|ACL Token HTTP API
@@ -66,7 +67,22 @@ consul-configuration-folder|Prefix of key
 		}
 ```
 
-# Usage
+## Enable manage UI
+```csharp
+    public void ConfigureServices(IServiceCollection services)
+		{
+			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+			services.AddConsulConfigurationCenter("127.0.0.1",5342);
+
+			services.AddOptions();
+			services.Configure<Configs>(Configuration.GetSection("TestConfig"));
+		
+		}
+```
+
+
+# Get configuration
 ## InstancePerLifetimeScope
 ```csharp
   public class LibClass
