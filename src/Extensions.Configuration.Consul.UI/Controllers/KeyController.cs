@@ -38,7 +38,9 @@ namespace Extensions.Configuration.Consul.UI.Controllers
         {
             if (keyValue.Key.EndsWith(":"))
                 return BadRequest("Key is not allowed to end with ':'");
-
+            if (!string.IsNullOrWhiteSpace(ObserverManager.Configuration.QueryOptions.Folder))
+                if (!keyValue.Key.StartsWith(ObserverManager.Configuration.QueryOptions.Folder))
+                    return BadRequest($"You can only operate the key under the [{ObserverManager.Configuration.QueryOptions.Folder}] folder");
             var result = await Client.KV.Put(new KVPair(keyValue.Key) { Value = StringToByte(keyValue.Value) });
             if (result.StatusCode != System.Net.HttpStatusCode.OK)
                 return BadRequest("error");

@@ -19,7 +19,6 @@ namespace Example
                 config.SetBasePath(Directory.GetCurrentDirectory());
                 config.AddJsonFile("appsettings.json", false, true);
                 config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", false, true);
-                //config.AddConsul("http://1.119.149.28:8500");
                 config.AddConsul(args);
                 config.AddCommandLine(args);
             }).UseStartup<Startup>();

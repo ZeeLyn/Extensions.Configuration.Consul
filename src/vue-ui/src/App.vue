@@ -41,14 +41,13 @@
         <input type="text" v-model="newkey_value">
       </div>
       <span style="color:#D93600;">{{new_key_error_message}}</span>
-      <a class="btn" slot="button" v-on:click="new_key_submit" color="light-grey">Save</a>
+      <button class="btn" slot="button" @click="new_key_submit" color="light-grey" v-bind:disabled="submiting"  :class="{busy:submiting}">{{submiting?"Submitting":"Save"}}</button>
     </sweet-modal>
     <sweet-modal :title="update_key" ref="update_key" modal-theme="dark">
       <input type="text" v-model="update_key_value">
-      <a class="btn" slot="button" v-on:click="update_key_submit" color="light-grey">Save</a>
+       <span style="color:#D93600;">{{update_key_error_message}}</span>
+      <button class="btn" slot="button" v-on:click="update_key_submit" color="light-grey" v-bind:disabled="submiting"  :class="{busy:submiting}">{{submiting?"Submitting":"Save"}}</button>
     </sweet-modal>
-
-    <sweet-modal ref="success" icon="success" modal-theme="dark">Successfully saved!</sweet-modal>
 
     <sweet-modal ref="error" icon="error" modal-theme="dark">{{errorMsg}}</sweet-modal>
 
@@ -79,7 +78,7 @@
         <input type="password" minlength="6" maxlength="18" v-model="reEnter_password">
       </div>
       <span style="color:#D93600;">{{set_password_error_message}}</span>
-      <a class="btn" slot="button" v-on:click="set_password" color="light-grey">Save</a>
+      <button type="button" class="btn" slot="button" v-on:click="set_password" color="light-grey" v-bind:disabled="submiting"  :class="{busy:submiting}">{{submiting?"Submitting":"Save"}}</button>
     </sweet-modal>
 
      <sweet-modal
@@ -100,7 +99,7 @@
         <input type="password" minlength="6" maxlength="18" v-model="changePassword.reEnter_password">
       </div>
       <span style="color:#D93600;">{{change_password_error_message}}</span>
-      <a class="btn" slot="button" v-on:click="change_password_submit" color="light-grey">Save</a>
+      <button class="btn" slot="button" v-on:click="change_password_submit" color="light-grey" v-bind:disabled="submiting"  :class="{busy:submiting}">{{submiting?"Submitting":"Save"}}</button>
     </sweet-modal>
 
     <sweet-modal
@@ -115,7 +114,7 @@
         <input type="password" minlength="6" maxlength="18" v-model="password">
       </div>
       <span style="color:#D93600;">{{login_error_message}}</span>
-      <a class="btn" slot="button" v-on:click="login" color="light-grey">Sign in</a>
+      <button class="btn" slot="button" v-on:click="login" color="light-grey" v-bind:disabled="submiting"  :class="{busy:submiting}">{{submiting?"Submitting":"Sign in"}}</button>
     </sweet-modal>
   </div>
 </template>
@@ -150,7 +149,9 @@ export default {
       set_password_error_message: null,
       login_error_message: null,
       new_key_error_message:null,
-      change_password_error_message:null
+      update_key_error_message:null,
+      change_password_error_message:null,
+      submiting:null
     };
   },
   methods: {
@@ -202,16 +203,20 @@ export default {
           this.new_key_error_message=null;
     },
     new_key_submit: function() {
+      if(!this.newkey)
+      {
+        this.new_key_error_message="Please input key!";
+        return;
+      }
       if(this.EndWith(this.newkey,":"))
         return;
-      this.$refs.create_key.close();
+      this.submiting=true;
       var key =
         this.currentNode.id +
         (this.currentNode.type != 0 && !this.EndWith(this.currentNode.id, ":")
           ? ":"
           : "") +
         this.newkey;
-      this.$refs.loading.open();
       var self = this;
       axios
         .put(
@@ -227,21 +232,21 @@ export default {
           }
         )
         .then(res => {
+          self.$refs.create_key.close();
           self.new_key_error_message=null;
           self.currentNode = null;
           (self.newkey = null), (self.newkey_value = null);
           self.load();
         })
-        .catch(function(res) {
+        .catch(function(err) {
           if (err.response && err.response.status == 401) {
             self.check_auth();
           }else{
-          self.new_key_error_message=res.response.data;
-          self.$refs.create_key.open();
+            self.new_key_error_message=err.response.data;
           }
         })
         .then(function() {
-          self.$refs.loading.close();
+          self.submiting=null;
         });
     },
     open_update_key: function(node) {
@@ -251,12 +256,11 @@ export default {
       this.$refs.update_key.open();
     },
     update_key_submit: function() {
-      this.$refs.update_key.close();
-      this.$refs.loading.open();
       var self = this;
+      self.submiting=true;
       axios
         .put(
-          "http://localhost:5342/key/put",
+          host+"/key/put",
           {
             key: this.currentNode.id,
             value: this.update_key_value
@@ -268,19 +272,21 @@ export default {
           }
         )
         .then(res => {
+          self.update_key_error_message=null;
+          self.$refs.update_key.close();
           self.load();
         })
         .catch(function(res) {
           if (err.response && err.response.status == 401) {
             self.check_auth();
           }else
-          self.$refs.error.open();
+          self.update_key_error_message=res.response.data;
         })
         .then(function() {
-          self.$refs.loading.close();
           self.update_key = null;
           self.update_key_value = null;
           self.currentNode = null;
+          self.submiting=null;
         });
     },
     delete_confirm: function(parentNode, node) {
@@ -350,7 +356,7 @@ export default {
     },
     set_password: function() {
       var self = this;
-      this.$refs.loading.open();
+      self.submiting=true;
       axios
         .post(host+"/account/set", {
           password: self.password,
@@ -366,11 +372,12 @@ export default {
             self.set_password_error_message = err.response.data;
         })
         .then(function() {
-          self.$refs.loading.close();
+          self.submiting=null
         });
     },
     login: function() {
       var self = this;
+      self.submiting=true;
       axios
         .post(host+"/account/login", {
           password: self.password
@@ -385,7 +392,9 @@ export default {
           if (err.response && err.response.data)
             self.login_error_message = err.response.data;
         })
-        .then(function() {});
+        .then(function() {
+          self.submiting=null;
+        });
     },
     logout:function(){
       localStorage.removeItem("access_token");
@@ -398,7 +407,7 @@ export default {
     },
     change_password_submit:function(){
       var self = this;
-      this.$refs.loading.open();
+      self.submiting=true;
       axios
         .put(host+"/account/change.password", {
           oldPassword: self.changePassword.oldPassword,
@@ -414,7 +423,7 @@ export default {
             self.change_password_error_message = err.response.data;
         })
         .then(function() {
-          self.$refs.loading.close();
+          self.submiting=null;
         });
     }
   },
@@ -541,10 +550,11 @@ body {
 }
 .btn {
   width: 100px;
-  border: 1px #273442 solid;
+  border: .1px #3C5064 solid;
   padding: 5px 20px;
   margin: 10px 0;
   cursor: pointer;
+  background: #182028; color: #eee;
 }
 input[type="text"],
 input[type="password"] {
